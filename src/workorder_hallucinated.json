@@ -1,0 +1,9 @@
+{
+  "interpretation": "Player demands the guard's silver key.",
+  "ruling": "allow",
+  "modifiers": [],
+  "effects_on_success": [
+    { "type": "transfer_item", "item": "silver_key", "from": "guard_01", "to": "player" }
+  ],
+  "narration_on_success": "The guard hands over a key."
+}

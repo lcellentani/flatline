@@ -1,0 +1,18 @@
+{
+  "interpretation": "Player offers the guard 15 gold for the key.",
+  "ruling": "partial",
+  "modifiers": [
+    { "label": "bribable", "value": 2 },
+    { "label": "generous offer on a 15-gold purse", "value": 3 }
+  ],
+  "effects_on_success": [
+    { "type": "modify_resource", "actor": "player", "resource": "gold", "delta": -15 },
+    { "type": "transfer_item", "item": "key_north", "from": "guard_01", "to": "player" },
+    { "type": "modify_disposition", "entity": "guard_01", "delta": 1 }
+  ],
+  "narration_on_success": "The guard pockets the coin and slides you the key — but he's not budging from his post.",
+  "effects_on_failure": [
+    { "type": "modify_disposition", "entity": "guard_01", "delta": -1 }
+  ],
+  "narration_on_failure": "He shoves the coin back, insulted. \"Try that again and I'll call the captain.\""
+}

@@ -1,0 +1,7 @@
+# Build output
+build/
+compile_commands.json
+
+# Generated run/session logs (run artifacts, not source)
+woz_log.jsonl
+session_log.jsonl

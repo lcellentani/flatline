@@ -1,0 +1,26 @@
+{
+  "room": {
+    "id": "guardroom",
+    "exits": { "north": { "object": "door_north" } }
+  },
+  "objects": [
+    { "id": "door_north", "properties": { "locked": true, "material": "oak" } }
+  ],
+  "entities": [
+    {
+      "id": "guard_01",
+      "hp": 12,
+      "max_hp": 12,
+      "disposition": "neutral",
+      "holds": ["key_north"],
+      "persona": "bored, underpaid, bribable"
+    }
+  ],
+  "player": {
+    "id": "player",
+    "hp": 20,
+    "max_hp": 20,
+    "gold": 15,
+    "inventory": ["dagger", "oil_flask"]
+  }
+}
