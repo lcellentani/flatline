@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/gm-adjudicator.md` |
 | **Date** | 2026-07-04 |
-| **Status** | Not Started |
+| **Status** | In Progress (1/4 phases done) |
 | **Effort** | 3–4 sessions (Phase 0 is a short but necessary bootstrap; Phases 1–2 are one light session; Phase 3's SDL3/ImGui build-out is the bulk) |
 
 ---
@@ -43,14 +43,16 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 
 ## 2. Phased Task Breakdown
 
-### Phase 0: Dev Environment & Project Setup — Not Started
+### Phase 0: Dev Environment & Project Setup — Done
 
 **Objective:** Turn the file set produced during spec drafting into an actual local repo that compiles and runs the WOZ demo and all four test suites on your machine, under the same Clang + Ninja + CMake + clangd toolchain the rest of this plan builds on — everything so far has only ever been validated in an ad hoc sandbox, not a persisted local environment.
 
-#### Task 0.1: Repo scaffold, version control, and GitHub remote
+#### Task 0.1: Repo scaffold, version control, and GitHub remote — Done
 
 **New Files:** `.gitignore`; initial `git init` + first commit; a GitHub remote
 **Tag:** T4 — pure mechanical scaffolding, no design decision.
+
+**Verified:** repo name locked as `flatline`; `origin` points at `https://github.com/lcellentani/flatline.git` (fetch+push); `main` tracks `origin/main` with no extra args needed. Initial commit `fe19dae` ("Bootstrap Flatline repo: toolchain, vendored deps, drafted GM engine") holds the full file set. Note: `.clangd` and `.zed/` are currently untracked (working-tree additions since the initial commit) — harmless, but flag if they should be committed or gitignored.
 
 **Changes:**
 - `git init` at the repo root.
@@ -67,10 +69,12 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 
 **Note:** project codename locked as **Flatline** (rejected: Recursion, Loci, Curtain, Postern, Adjudicator, and the rest of the two brainstorming rounds). `gh repo create`'s prompt still asks at setup time — the natural answer is now `flatline`, but Ludo confirms the exact repo name when actually running Task 0.1.
 
-#### Task 0.2: Vendor nlohmann/json
+#### Task 0.2: Vendor nlohmann/json — Done
 
 **New File:** `third_party/nlohmann/json.hpp`
 **Tag:** T4 — vendoring unmodified upstream source, same shape as Phase 3's ImGui vendoring.
+
+**Verified:** `third_party/nlohmann/json.hpp` present with a `README.md` recording the pinned tag; resolves via `-I third_party` with no system install.
 
 **Changes:**
 - Vendor the single-header amalgamated release, pinned to a specific tag (recorded the same way ImGui's tag is recorded in Phase 3). The demo's own build comment currently treats this as `-I<path-to-nlohmann>` — a machine-local path only you know about; vendoring makes it a checked-in, reproducible part of the repo.
@@ -79,10 +83,12 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 - `#include <nlohmann/json.hpp>` resolves via the vendored path with no system-wide install needed.
 - Vendored file is byte-identical to the pinned release tag (empty diff).
 
-#### Task 0.3: CMake + Clang + Ninja + clangd, covering the existing five targets
+#### Task 0.3: CMake + Clang + Ninja + clangd, covering the existing five targets — Done
 
 **New Files:** `CMakeLists.txt`, `CMakePresets.json`
 **Tag:** T2 — matching an already-established personal toolchain pattern is mostly mechanical, but this is the very first time this code compiles under Clang anywhere outside an ad hoc sandbox, so it's a real check, not an assumption.
+
+**Verified (2026-07-06):** `cmake --build build --preset default` builds all five targets cleanly under `clang++`/Ninja. Re-ran all five binaries from `build/bin`: `test_gauntlet` 22/22, `test_log` 37/37, `test_applier` 31/31, `test_roll` 20/20 — exact match to the acceptance-criteria counts — and `woz` exits 0 with output matching the documented single-turn trace. `build/compile_commands.json` exists and `.clangd` at the repo root points `CompilationDatabase` at `build`.
 
 **Changes:**
 - `CMakePresets.json` pins the configure step: generator `Ninja`, `CMAKE_CXX_COMPILER = clang++`, `CMAKE_EXPORT_COMPILE_COMMANDS = ON` — one shared, portable config instead of per-editor settings, so VS Code's CMake Tools extension and Zed's CMake integration both pick it up with no extra setup.
@@ -270,8 +276,8 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 - [ ] Malformed WorkOrder JSON in the GUI panel fails gracefully — no crash, no `World` mutation.
 
 ### Regression
-- [ ] All four existing test suites unmodified and still passing (22/22, 37/37, 31/31, 20/20).
-- [ ] Demo still exits 0.
+- [x] All four existing test suites unmodified and still passing (22/22, 37/37, 31/31, 20/20) — confirmed 2026-07-06 under Phase 0's Clang/Ninja build.
+- [x] Demo still exits 0 — confirmed 2026-07-06.
 
 ---
 
