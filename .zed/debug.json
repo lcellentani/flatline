@@ -1,0 +1,67 @@
+[
+  {
+    "label": "Debug woz",
+    "adapter": "CodeLLDB",
+    "request": "launch",
+    "program": "$ZED_WORKTREE_ROOT/build/bin/woz.exe",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "build": {
+      "label": "cmake: build",
+      "command": "cmake",
+      "args": ["--build", "--preset", "default"],
+      "cwd": "$ZED_WORKTREE_ROOT"
+    }
+  },
+  {
+    "label": "Debug test_gauntlet",
+    "adapter": "CodeLLDB",
+    "request": "launch",
+    "program": "$ZED_WORKTREE_ROOT/build/bin/test_gauntlet.exe",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "build": {
+      "label": "cmake: build",
+      "command": "cmake",
+      "args": ["--build", "--preset", "default"],
+      "cwd": "$ZED_WORKTREE_ROOT"
+    }
+  },
+  {
+    "label": "Debug test_applier",
+    "adapter": "CodeLLDB",
+    "request": "launch",
+    "program": "$ZED_WORKTREE_ROOT/build/bin/test_applier.exe",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "build": {
+      "label": "cmake: build",
+      "command": "cmake",
+      "args": ["--build", "--preset", "default"],
+      "cwd": "$ZED_WORKTREE_ROOT"
+    }
+  },
+  {
+    "label": "Debug test_roll",
+    "adapter": "CodeLLDB",
+    "request": "launch",
+    "program": "$ZED_WORKTREE_ROOT/build/bin/test_roll.exe",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "build": {
+      "label": "cmake: build",
+      "command": "cmake",
+      "args": ["--build", "--preset", "default"],
+      "cwd": "$ZED_WORKTREE_ROOT"
+    }
+  },
+  {
+    "label": "Debug test_log",
+    "adapter": "CodeLLDB",
+    "request": "launch",
+    "program": "$ZED_WORKTREE_ROOT/build/bin/test_log.exe",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "build": {
+      "label": "cmake: build",
+      "command": "cmake",
+      "args": ["--build", "--preset", "default"],
+      "cwd": "$ZED_WORKTREE_ROOT"
+    }
+  }
+]

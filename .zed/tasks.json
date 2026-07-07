@@ -1,0 +1,47 @@
+[
+  {
+    "label": "cmake: configure",
+    "command": "cmake",
+    "args": ["--preset", "default"],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "reveal": "always"
+  },
+  {
+    "label": "cmake: build",
+    "command": "cmake",
+    "args": ["--build", "--preset", "default"],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "reveal": "always",
+    "use_new_terminal": false
+  },
+  {
+    "label": "run: woz",
+    "command": "$ZED_WORKTREE_ROOT/build/bin/woz.exe",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "reveal": "always"
+  },
+  {
+    "label": "run: test_gauntlet",
+    "command": "$ZED_WORKTREE_ROOT/build/bin/test_gauntlet.exe",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "reveal": "always"
+  },
+  {
+    "label": "run: test_applier",
+    "command": "$ZED_WORKTREE_ROOT/build/bin/test_applier.exe",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "reveal": "always"
+  },
+  {
+    "label": "run: test_roll",
+    "command": "$ZED_WORKTREE_ROOT/build/bin/test_roll.exe",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "reveal": "always"
+  },
+  {
+    "label": "run: test_log",
+    "command": "$ZED_WORKTREE_ROOT/build/bin/test_log.exe",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "reveal": "always"
+  }
+]
