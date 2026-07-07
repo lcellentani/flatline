@@ -2,6 +2,12 @@
 build/
 compile_commands.json
 
+# clangd index/cache (also auto-ignored via nested .gitignore, kept explicit here)
+.cache/
+
+# Claude Code local settings (not shared across the team)
+.claude/settings.local.json
+
 # Generated run/session logs (run artifacts, not source)
 woz_log.jsonl
 session_log.jsonl
