@@ -27,11 +27,11 @@
 // the property this earns: re-running apply() on a logged entry's own
 // inputs reproduces its own recorded output.
 
-#include "gm_applier.hpp"
 #include "gm_gauntlet.hpp"
 #include "gm_json.hpp"
 #include "gm_log.hpp"
 #include "gm_roll.hpp"
+#include "gm_turn.hpp"
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -73,33 +73,29 @@ int main() {
     //    exactly the "engine owns the dice" guarantee this stage protects.
     //    turn_number is engine-tracked, not a WorkOrder field (gm_roll.hpp) —
     //    hardcoded here since this demo runs a single fixed turn.
+    // Steps 4-6c (modifier budget -> roll -> gauntlet -> apply -> log) are
+    // now one call into the shared pipeline (gm_turn.hpp, Phase 1) -- the
+    // demo's only remaining job here is reconstructing the same console
+    // narration from the returned Outcome, since process_turn itself does
+    // no I/O (that's what keeps it reusable by woz_loop/woz_gui later).
     const int64_t turn_number = 1;
-    World world_after = world;  // unchanged unless [APPLY] below actually runs
+    auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, kLogPath);
 
-    if (auto budget_failure = gauntlet::validate_modifiers(wo.modifiers)) {
+    if (auto* budget_failure = std::get_if<log::ModifierBudgetRejected>(&outcome)) {
         std::cout << "=== MODIFIER BUDGET ===\nREJECTED: " << budget_failure->reason << "\n\n";
-
-        // [LOG] Turn never reaches the roll -- ModifierBudgetRejected
-        // structurally carries no roll field, matching that.
-        log::append_to_file(kLogPath, log::LogEntry{
-            turn_number, wo,
-            log::ModifierBudgetRejected{budget_failure->magnitude_sum, budget_failure->budget, budget_failure->reason}
-        });
     } else {
         std::cout << "=== MODIFIER BUDGET ===\nOK (magnitude sum within kModifierBudget)\n\n";
 
-        // 5. [ROLL] modifiers empty => no roll, success is automatic
-        //    (locked, gm_effects.hpp WorkOrder comment). Otherwise the seeded
-        //    d20+DC roll (gm_roll.hpp) picks the branch for real.
         bool rolled = !wo.modifiers.empty();
-        bool success = true;  // no-roll turns: unconditional success
-        std::optional<log::RollInfo> roll_info;  // absent on no-roll turns; the logger's own
-                                                   // "no phantom seed for a turn that never rolled" rule
-        if (rolled) {
-            uint64_t seed = roll::seed_for_turn(turn_number, wo);
-            roll::RollResult r = roll::resolve_turn(turn_number, wo);
+        const std::optional<log::RollInfo>* roll_info =
+            std::holds_alternative<log::GauntletRejected>(outcome)
+                ? &std::get<log::GauntletRejected>(outcome).roll
+                : &std::get<log::Applied>(outcome).roll;
+
+        bool success = true;
+        if (rolled && *roll_info) {
+            const auto& r = (*roll_info)->result;
             success = r.success;
-            roll_info = log::RollInfo{seed, r};
             std::cout << "=== ROLL ===\n"
                        << "die " << r.die << " + modifiers " << r.modifier_sum
                        << " = " << r.total << " vs DC " << rules::kDifficultyClass
@@ -108,50 +104,18 @@ int main() {
             std::cout << "=== ROLL ===\nno modifiers -> no roll -> automatic success\n\n";
         }
 
-        // 6. [VALIDATOR] Run the gauntlet against the branch the roll (or its
-        //    absence) actually selected — no longer a stand-in for
-        //    effects_on_success (A1, gm-adjudicator.md Key Decisions):
-        //    run_gauntlet takes one vector<Effect> and doesn't know or care
-        //    which branch it came from; now it genuinely is "whichever
-        //    branch was selected," not always the success one.
-        const std::vector<Effect>& selected_effects = success ? wo.effects_on_success : wo.effects_on_failure;
-        const std::string& selected_narration = success ? wo.narration_on_success : wo.narration_on_failure;
-
-        auto gauntlet_result = gauntlet::run_gauntlet(world, selected_effects);
         std::cout << "=== GAUNTLET (" << (success ? "effects_on_success" : "effects_on_failure") << ") ===\n";
-        if (auto* applied = std::get_if<std::vector<Effect>>(&gauntlet_result)) {
-            std::cout << applied->size() << " effect(s) survived the gauntlet, ready for [APPLY]\n\n";
-
-            // 6b. [APPLY] Applies the gauntlet-approved, roll-selected branch.
-            world_after = applier::apply(world, *applied);
-            std::cout << "=== NARRATION ===\n" << selected_narration << "\n\n";
+        if (auto* applied = std::get_if<log::Applied>(&outcome)) {
+            std::cout << applied->applied_effects.size() << " effect(s) survived the gauntlet, ready for [APPLY]\n\n";
+            std::cout << "=== NARRATION ===\n" << applied->narration << "\n\n";
             std::cout << "=== APPLIED (world before -> after) ===\n";
             std::cout << "player.gold : " << world.player.gold << " -> " << world_after.player.gold << "\n";
             std::cout << "player.inventory size : " << world.player.inventory.size()
                        << " -> " << world_after.player.inventory.size() << "\n\n";
-
-            // 6c. [LOG] One entry, this turn's actual outcome: the raw work
-            //     order (via LogEntry.work_order), the seed+roll result (if
-            //     any), and the gauntlet-approved applied_effects alongside
-            //     both world snapshots -- self-contained, independently
-            //     replayable (Approach B, locked).
-            log::append_to_file(kLogPath, log::LogEntry{
-                turn_number, wo,
-                log::Applied{roll_info, *applied, selected_narration, world, world_after,
-                             applier::vital_transitions(world, *applied)}
-            });
         } else {
-            const auto& f = std::get<gauntlet::Failure>(gauntlet_result);
+            const auto& f = std::get<log::GauntletRejected>(outcome);
             std::cout << "REJECTED at effect " << f.effect_index
-                       << " [" << gauntlet::stage_name(f.stage) << "]: " << f.reason << "\n\n";
-
-            // [LOG] Turn rolled (maybe) but never reached [APPLY] -- no
-            // applied_effects or world_after exist for this outcome kind.
-            log::append_to_file(kLogPath, log::LogEntry{
-                turn_number, wo,
-                log::GauntletRejected{roll_info, f.effect_index, gauntlet::stage_name(f.stage), f.reason,
-                                       f.conflicting_with_index}
-            });
+                       << " [" << f.stage << "]: " << f.reason << "\n\n";
         }
     }
 

@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/gm-adjudicator.md` |
 | **Date** | 2026-07-04 |
-| **Status** | In Progress (1/4 phases done) |
+| **Status** | In Progress (2/4 phases done) |
 | **Effort** | 3–4 sessions (Phase 0 is a short but necessary bootstrap; Phases 1–2 are one light session; Phase 3's SDL3/ImGui build-out is the bulk) |
 
 ---
@@ -104,14 +104,16 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 
 ---
 
-### Phase 1: Shared Turn-Processing Pipeline — Not Started
+### Phase 1: Shared Turn-Processing Pipeline — Done
 
 **Objective:** Extract the per-turn pipeline already proven correct in `wizard_of_oz_demo.cpp` into a reusable function, so the CLI loop, the GUI tool, and the existing demo all call one implementation.
 
-#### Task 1.1: New shared pipeline header
+#### Task 1.1: New shared pipeline header — Done
 
 **New File:** `gm_turn.hpp`
 **Tag:** T2 — mechanical extraction of logic already proven in the demo, but the return shape is a small real decision worth an AI Q&A pass rather than blind delegation.
+
+**Verified (2026-07-07):** `gm_turn.hpp` compiles as part of the `test_turn` target (18/18 new checks pass, exit 0) covering the bribe-path `Applied` outcome, the hallucinated-path `GauntletRejected` outcome (rejected at `ids_exist`), and one-log-line-per-call across all three outcome kinds — each cross-checked against an independently-run `validate_modifiers`/`resolve_turn`/`run_gauntlet`/`apply` call, not just shape-checked. `process_turn` does no console I/O (returns `std::pair<World, log::Outcome>` only), matching the plan's own reasoning for reusing `Outcome` as the report shape.
 
 **Changes:**
 - Define `std::pair<World, log::Outcome> process_turn(const World& world, int64_t turn_number, const WorkOrder& wo, const std::string& log_path)`.
@@ -127,10 +129,12 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 - Calling it with `workorder_hallucinated.json`'s effects returns a `GauntletRejected` outcome at the same stage/effect index the current demo reports, with the returned `World` identical to the input.
 - Exactly one line is appended to the given log path per call, regardless of which outcome kind is returned.
 
-#### Task 1.2: Refactor the demo to call the shared pipeline
+#### Task 1.2: Refactor the demo to call the shared pipeline — Done
 
 **File:** `wizard_of_oz_demo.cpp`
 **Tag:** T3 — purely mechanical replacement of inlined steps with one `process_turn` call; touches a tested, working file, so every line gets reviewed rather than delegated outright.
+
+**Verified (2026-07-07):** Captured `woz`'s stdout + `woz_log.jsonl` before the refactor (via `git stash`), rebuilt after, diffed both — stdout byte-identical, exit code 0 both times, and the newly appended log line is structurally JSON-equal (compared via `JSON.stringify` after parse, same method `test_log.cpp` itself uses) to the pre-refactor entry. All 4 pre-existing suites re-ran with unchanged counts: `test_gauntlet` 22/22, `test_log` 37/37, `test_applier` 31/31, `test_roll` 20/20, all exit 0. The one incidental cleanup: `wizard_of_oz_demo.cpp`'s now-unused `#include "gm_applier.hpp"` was dropped (its only remaining need, `applier::apply`/`vital_transitions`, moved into `gm_turn.hpp`).
 
 **Changes:**
 - Replace the inlined modifier-budget → roll → gauntlet → apply → log block with a single call to `gm_turn::process_turn`.
@@ -270,13 +274,13 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 - [ ] Session ends automatically, on both front ends, when `player.vital` reaches `Dead`.
 
 ### Integration
-- [ ] `wizard_of_oz_demo.cpp`'s output is byte-identical before/after the Phase 1 refactor.
+- [x] `wizard_of_oz_demo.cpp`'s output is byte-identical before/after the Phase 1 refactor — confirmed 2026-07-07.
 - [ ] Clang/Ninja-built test binaries produce identical pass counts to the current manual `g++` builds.
 - [ ] clangd gives live diagnostics on `gm_*.hpp` in both VS Code and Zed once `compile_commands.json` exists.
 - [ ] Malformed WorkOrder JSON in the GUI panel fails gracefully — no crash, no `World` mutation.
 
 ### Regression
-- [x] All four existing test suites unmodified and still passing (22/22, 37/37, 31/31, 20/20) — confirmed 2026-07-06 under Phase 0's Clang/Ninja build.
+- [x] All four existing test suites unmodified and still passing (22/22, 37/37, 31/31, 20/20) — confirmed 2026-07-06 under Phase 0's Clang/Ninja build; re-confirmed 2026-07-07 after the Phase 1 refactor, plus new `test_turn` 18/18.
 - [x] Demo still exits 0 — confirmed 2026-07-06.
 
 ---
