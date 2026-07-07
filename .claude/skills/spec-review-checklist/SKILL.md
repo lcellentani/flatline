@@ -1,9 +1,10 @@
 ---
-name: spec-review
-description: Audit a SPEC for ambiguity, missing non-goals, unfalsifiable goals, or unresolved open questions before implementation planning starts. Use whenever a spec has just been drafted or edited and before it's declared ready, or whenever the user asks to review, check, or audit a spec.
+name: spec-review-checklist
+description: Audit a SPEC for ambiguity, missing non-goals, unfalsifiable goals, or unresolved open questions before implementation planning starts. Use whenever a spec has just been drafted or edited and before it's declared ready, or whenever the user asks to review, check, or audit a spec. Not user-invocable directly — used internally by the /spec-review command.
+user-invocable: false
 ---
 
-# spec-review
+# spec-review-checklist
 
 A spec-level audit: read-only, returns a structured findings list, and never edits the spec itself — the same checkpoint discipline this workflow uses before any content gets relied on downstream.
 

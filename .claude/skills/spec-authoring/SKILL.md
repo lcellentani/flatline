@@ -1,9 +1,10 @@
 ---
-name: spec-new
-description: Draft a new SPEC design document for a feature — problem statement, goals, non-goals, design approach, and open questions — before any implementation planning begins. Use this whenever the user wants to start a new feature, asks to "write a spec" or "design doc," or describes a feature idea that hasn't been scoped yet, even if they don't use the word "spec." Always run this before drafting an implementation plan for any feature with no existing SPEC file.
+name: spec-authoring
+description: Draft a new SPEC design document for a feature — problem statement, goals, non-goals, design approach, and open questions — before any implementation planning begins. Use this whenever the user wants to start a new feature, asks to "write a spec" or "design doc," or describes a feature idea that hasn't been scoped yet, even if they don't use the word "spec." Always run this before drafting an implementation plan for any feature with no existing SPEC file. Not user-invocable directly — used internally by the /spec-new command.
+user-invocable: false
 ---
 
-# spec-new
+# spec-authoring
 
 Produces a SPEC at `docs/specs/<feature-slug>.md`, following the structure in `assets/template.md` (bundled with this skill).
 

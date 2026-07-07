@@ -1,9 +1,10 @@
 ---
-name: plan-draft
-description: Draft or extend a lean Implementation Plan from an approved SPEC — phased task breakdown, files-to-modify, acceptance criteria, and a per-task delegation tag. Use whenever asked to draft an implementation plan, break a spec into tasks, plan out a feature, or continue planning the next phase of an existing plan — even without the exact phrase "implementation plan."
+name: plan-drafting
+description: Draft or extend a lean Implementation Plan from an approved SPEC — phased task breakdown, files-to-modify, acceptance criteria, and a per-task delegation tag. Use whenever asked to draft an implementation plan, break a spec into tasks, plan out a feature, or continue planning the next phase of an existing plan — even without the exact phrase "implementation plan." Not user-invocable directly — used internally by the /plan-draft command.
+user-invocable: false
 ---
 
-# plan-draft
+# plan-drafting
 
 Produces or extends `docs/plans/<feature-slug>.md`, following the structure in `assets/template.md` (bundled with this skill).
 

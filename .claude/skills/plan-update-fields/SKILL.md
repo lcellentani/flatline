@@ -1,9 +1,10 @@
 ---
-name: plan-update
-description: Update an existing Implementation Plan in place after a work session — phase/task status markers, Actual delegation tags, and the header Status field. Use after finishing implementation work on a task or phase, or whenever asked to update plan status, progress, or mark something done.
+name: plan-update-fields
+description: Update an existing Implementation Plan in place after a work session — phase/task status markers, Actual delegation tags, and the header Status field. Use after finishing implementation work on a task or phase, or whenever asked to update plan status, progress, or mark something done. Not user-invocable directly — used internally by the /plan-update command.
+user-invocable: false
 ---
 
-# plan-update
+# plan-update-fields
 
 Modifies `docs/plans/<feature-slug>.md` in place, against a short allow-list of what can change — everything else is off-limits.
 

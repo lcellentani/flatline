@@ -1,9 +1,10 @@
 ---
-name: plan-review
-description: Audit an Implementation Plan against engineering-principles and completeness checks before implementation starts. Use whenever a plan has just been drafted or edited, before starting work on it, or whenever the user asks to review, check, or approve a plan.
+name: plan-review-checklist
+description: Audit an Implementation Plan against engineering-principles and completeness checks before implementation starts. Use whenever a plan has just been drafted or edited, before starting work on it, or whenever the user asks to review, check, or approve a plan. Not user-invocable directly — used internally by the /plan-review command.
+user-invocable: false
 ---
 
-# plan-review
+# plan-review-checklist
 
 A plan-level audit: read-only, returns a structured findings list, and never edits the plan itself — the checkpoint between drafting and acting on it.
 

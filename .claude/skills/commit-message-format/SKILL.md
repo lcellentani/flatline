@@ -1,5 +1,5 @@
 ---
-name: git-commit
+name: commit-message-format
 description: "Reference for the commit message format: [Tn] type(scope): subject. Not user-invocable directly — used internally by the /git-commit command."
 user-invocable: false
 ---
