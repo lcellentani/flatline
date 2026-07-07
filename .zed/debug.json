@@ -9,8 +9,21 @@
       "label": "cmake: build",
       "command": "cmake",
       "args": ["--build", "--preset", "default"],
-      "cwd": "$ZED_WORKTREE_ROOT"
-    }
+      "cwd": "$ZED_WORKTREE_ROOT",
+    },
+  },
+  {
+    "label": "Debug woz_loop",
+    "adapter": "CodeLLDB",
+    "request": "launch",
+    "program": "$ZED_WORKTREE_ROOT/build/bin/woz_loop.exe",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "build": {
+      "label": "cmake: build",
+      "command": "cmake",
+      "args": ["--build", "--preset", "default"],
+      "cwd": "$ZED_WORKTREE_ROOT",
+    },
   },
   {
     "label": "Debug test_gauntlet",
@@ -22,8 +35,8 @@
       "label": "cmake: build",
       "command": "cmake",
       "args": ["--build", "--preset", "default"],
-      "cwd": "$ZED_WORKTREE_ROOT"
-    }
+      "cwd": "$ZED_WORKTREE_ROOT",
+    },
   },
   {
     "label": "Debug test_applier",
@@ -35,8 +48,8 @@
       "label": "cmake: build",
       "command": "cmake",
       "args": ["--build", "--preset", "default"],
-      "cwd": "$ZED_WORKTREE_ROOT"
-    }
+      "cwd": "$ZED_WORKTREE_ROOT",
+    },
   },
   {
     "label": "Debug test_roll",
@@ -48,8 +61,8 @@
       "label": "cmake: build",
       "command": "cmake",
       "args": ["--build", "--preset", "default"],
-      "cwd": "$ZED_WORKTREE_ROOT"
-    }
+      "cwd": "$ZED_WORKTREE_ROOT",
+    },
   },
   {
     "label": "Debug test_log",
@@ -61,7 +74,7 @@
       "label": "cmake: build",
       "command": "cmake",
       "args": ["--build", "--preset", "default"],
-      "cwd": "$ZED_WORKTREE_ROOT"
-    }
-  }
+      "cwd": "$ZED_WORKTREE_ROOT",
+    },
+  },
 ]
