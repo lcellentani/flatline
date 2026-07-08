@@ -1,0 +1,20 @@
+---
+# Mirrors .claude/rules/coding_style.md: Google C++ Style Guide baseline,
+# with 4-space indentation, a 100-column limit, and pointers/references
+# bound to the type rather than the variable name.
+BasedOnStyle: Google
+Standard: c++20
+
+IndentWidth: 4
+ContinuationIndentWidth: 4
+AccessModifierOffset: -4
+ColumnLimit: 100
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+
+BreakBeforeBraces: Attach
+SpaceBeforeParens: ControlStatements
+
+MaxEmptyLinesToKeep: 1
