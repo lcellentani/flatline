@@ -77,4 +77,17 @@
       "cwd": "$ZED_WORKTREE_ROOT",
     },
   },
+  {
+    "label": "Debug test_turn",
+    "adapter": "CodeLLDB",
+    "request": "launch",
+    "program": "$ZED_WORKTREE_ROOT/build/bin/test_turn.exe",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "build": {
+      "label": "cmake: build",
+      "command": "cmake",
+      "args": ["--build", "--preset", "default"],
+      "cwd": "$ZED_WORKTREE_ROOT",
+    },
+  },
 ]
