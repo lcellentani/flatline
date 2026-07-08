@@ -60,6 +60,16 @@ inline const EntityId VOID_ENTITY{"__void__"};
 // (gm_rules.hpp), the same move as VOID_ENTITY above for "no destination".
 inline const ItemId UNARMED_ITEM{"__unarmed__"};
 
+// Reserved sentinel meaning "dealt by an environmental hazard, not
+// anything an entity holds" — the same carve-out shape as UNARMED_ITEM
+// above, needed the first time Damage.via has to name something nobody
+// is holding (being shoved into flame). Named per-hazard (FIRE_ITEM)
+// rather than one generic environmental sentinel, so each hazard keeps
+// its own row in the damage-cap table instead of sharing a single
+// magnitude; generalize to more named sentinels only once a second
+// hazard actually needs one, not speculatively now.
+inline const ItemId FIRE_ITEM{"__fire__"};
+
 // ---------------------------------------------------------------------
 // Property values
 // ---------------------------------------------------------------------

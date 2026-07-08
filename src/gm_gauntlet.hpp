@@ -135,14 +135,15 @@ inline std::optional<Failure> ids_exist(const World& world, std::size_t idx, con
         return Failure{idx, Stage::IdsExist, "damage.source '" + e.source.value + "' does not exist"};
     if (!rules::entity_exists(world, e.target))
         return Failure{idx, Stage::IdsExist, "damage.target '" + e.target.value + "' does not exist"};
-    // Sentinel carve-out (gm_rules.hpp): UNARMED_ITEM is never a real item id.
-    if (e.via != UNARMED_ITEM && !rules::item_exists(world, e.via))
+    // Sentinel carve-out (gm_effects.hpp): UNARMED_ITEM and FIRE_ITEM are
+    // never real item ids — neither is held by anyone in World state.
+    if (e.via != UNARMED_ITEM && e.via != FIRE_ITEM && !rules::item_exists(world, e.via))
         return Failure{idx, Stage::IdsExist, "damage.via '" + e.via.value + "' does not exist"};
     return std::nullopt;
 }
 
 inline std::optional<Failure> preconditions(const World& world, std::size_t idx, const Damage& e) {
-    if (e.via != UNARMED_ITEM && !rules::holds(world, e.source, e.via))
+    if (e.via != UNARMED_ITEM && e.via != FIRE_ITEM && !rules::holds(world, e.source, e.via))
         return Failure{idx, Stage::Preconditions,
                         "damage.source '" + e.source.value + "' does not hold via '" + e.via.value + "'"};
     // Dead is terminal (gm_rules.hpp::derive_vital_state) — Unconscious remains

@@ -52,6 +52,12 @@ inline const std::map<std::string, int64_t> kDamageCap = {
     {"oil_flask",   2},  // glass + fire; worse than a blade as a swung weapon
     {"key_north",   1},  // blunt improvised object — comic-weak on purpose (context doc §7)
     {"__unarmed__", 1},  // UNARMED_ITEM; fists. A stated table row, not a fallback.
+    {"__fire__",   14},  // FIRE_ITEM; shoved into open flame. Tuned to land guard_01
+                          // (hp 12/12) on Unconscious rather than Dead in one hit
+                          // (kDeathOvershoot = -5 below) — a single high-magnitude hit
+                          // standing in for sustained burn damage, not a damage-over-time
+                          // mechanic (no engine support for recurring effects exists in
+                          // v0; see docs/guides rulebook).
 };
 
 // Looks up the cap for the item named by Damage::via. Returns nullopt on
@@ -413,11 +419,11 @@ inline bool modifier_budget_legal(const std::vector<Modifier>& modifiers) {
 // ---------------------------------------------------------------------
 // Existence-check carve-out (a validator implementation note, not data)
 // ---------------------------------------------------------------------
-// VOID_ENTITY and UNARMED_ITEM (gm_effects.hpp) are sentinels, not real
-// ids — they will never appear in World::entities or any room's item
-// list. The gauntlet's "referenced ids exist" stage must special-case
-// both explicitly, or the canonical burn_the_door() example
-// (transfer_item(..., to=VOID_ENTITY)) and any Damage using UNARMED_ITEM
-// will fail the hallucination check by construction.
+// VOID_ENTITY, UNARMED_ITEM, and FIRE_ITEM (gm_effects.hpp) are sentinels,
+// not real ids — they will never appear in World::entities or any room's
+// item list. The gauntlet's "referenced ids exist" stage must special-case
+// all three explicitly, or the canonical burn_the_door() example
+// (transfer_item(..., to=VOID_ENTITY)) and any Damage using UNARMED_ITEM or
+// FIRE_ITEM will fail the hallucination check by construction.
 
 }  // namespace gm::rules
