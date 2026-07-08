@@ -35,37 +35,37 @@ Everything else follows Google style as written.
 Classes, structs, enums, and type aliases use `PascalCase`.
 
 ```cpp
-class Renderer { ... };
-struct InputState { ... };
-enum class Tile : uint8_t { ... };
-using TileMap = std::array<std::array<Tile, MAP_COLS>, MAP_ROWS>;
+class Widget { ... };
+struct FrameOptions { ... };
+enum class Status : uint8_t { ... };
+using HandlerTable = std::vector<EventHandler>;
 ```
 
 ### Functions and methods
 All functions and methods use `snake_case`.
 
 ```cpp
-void clear(Color c);
-void draw_rect(Rect r, Color c);
-InputState poll_input();
+void close(Widget& w);
+void render(Widget& w, const Context& ctx);
+FrameOptions poll_options();
 ```
 
 ### Variables
 Local variables and function parameters use `snake_case`.
 
 ```cpp
-int tile_size = 32;
-float delta_time = 0.016f;
+int retry_count = 3;
+float elapsed_seconds = 0.016f;
 ```
 
 ### Member variables
 Member variables use `snake_case` with a trailing underscore.
 
 ```cpp
-class Renderer {
+class Widget {
 private:
-    SDL_Window*   window_   = nullptr;
-    SDL_Renderer* renderer_ = nullptr;
+    Backend*    backend_     = nullptr;
+    EventQueue* event_queue_ = nullptr;
 };
 ```
 
@@ -73,14 +73,14 @@ private:
 Compile-time constants use `UPPER_SNAKE_CASE`. Enum values use `PascalCase`.
 
 ```cpp
-export constexpr int MAP_COLS  = 21;
-export constexpr int MAP_ROWS  = 21;
-export constexpr int TILE_SIZE = 32;
+export constexpr int MAX_WIDGETS     = 256;
+export constexpr int DEFAULT_WIDTH   = 800;
+export constexpr int FRAME_BUDGET_MS = 16;
 
-enum class Tile : uint8_t {
-    Empty  = 0,
-    Wall   = 1,
-    Pellet = 2,
+enum class Status : uint8_t {
+    Idle   = 0,
+    Active = 1,
+    Closed = 2,
 };
 ```
 
@@ -88,16 +88,16 @@ enum class Tile : uint8_t {
 Module names use `lower.dot.separated` matching the project namespace hierarchy.
 
 ```cpp
-export module engine.renderer;
-export module engine.input;
-export module engine.game;
+export module app.widget;
+export module app.input;
+export module app.render;
 ```
 
 ### Files
 | File type | Convention | Example |
 |---|---|---|
-| Module interface unit | `snake_case.ixx` | `renderer.ixx` |
-| Module implementation unit | `snake_case.cpp` | `renderer.cpp` |
+| Module interface unit | `snake_case.ixx` | `widget.ixx` |
+| Module implementation unit | `snake_case.cpp` | `widget.cpp` |
 | Regular header (if needed) | `snake_case.h` | `types.h` |
 
 # Formatting
@@ -116,16 +116,16 @@ Opening brace on the same line as the statement that opens the block. No excepti
 
 ```cpp
 // correct
-void Renderer::clear(Color c) {
-    if (!renderer_) {
+void Widget::close() {
+    if (!backend_) {
         return;
     }
 }
 
 // wrong
-void Renderer::clear(Color c)
+void Widget::close()
 {
-    if (!renderer_)
+    if (!backend_)
     {
         return;
     }
@@ -156,63 +156,41 @@ if(is_valid()){
 
 ```cpp
 // correct
-SDL_Renderer* renderer_;
-const InputState& input;
-void draw_rect(Rect* r);
+Backend* backend_;
+const FrameOptions& options;
+void render(Context* ctx);
 
 // wrong
-SDL_Renderer *renderer_;
-const InputState &input;
-void draw_rect(Rect *r);
+Backend *backend_;
+const FrameOptions &options;
+void render(Context *ctx);
 ```
 
 ## Blank lines
 One blank line between method definitions. Two blank lines between top-level declarations in a file. No blank line immediately after an opening brace or before a closing brace.
 
 ```cpp
-void Renderer::clear(Color c) {
-    SDL_SetRenderDrawColor(renderer_, c.r, c.g, c.b, c.a);
-    SDL_RenderClear(renderer_);
+void Widget::close() {
+    detach(backend_);
+    backend_ = nullptr;
 }
 
-void Renderer::present() {
-    SDL_RenderPresent(renderer_);
+void Widget::flush() {
+    event_queue_->drain();
 }
 ```
 ## C++20 specifics
 
-### Module structure
-Every module file follows this layout, in this order:
-
-```cpp
-module;                          // 1. global module fragment opens here
-#include <external_headers.h>    // 2. all external includes go here (SDL2, STL)
-
-export module engine.x;          // 3. module declaration
-
-import engine.y;                  // 4. imports of other project modules only
-import engine.z;
-
-// 5. exported declarations
-export class Foo { ... };
-export void bar();
-
-// 6. non-exported implementation (or in a separate .cpp)
-```
-
-### What goes where
-- Standard library headers → global module fragment via `#include`
-- Third-party C headers (SDL2) → global module fragment via `#include`
-- Project modules → `import engine.x` after the module declaration
-- Nothing gets `import <...>` (angle-bracket imports are disabled in this project)
+### Modules
+For C++20 module file structure and layout, see the `cpp-coding-standards` skill.
 
 ### Concepts
 Concepts are named with `PascalCase` and defined in the module that owns the constraint.
 
 ```cpp
 export template<typename T>
-concept Drawable = requires(T t, Renderer& r) {
-    { t.draw(r) } -> std::same_as<void>;
+concept Streamable = requires(const T& t, std::ostream& os) {
+    { t.write(os) } -> std::same_as<void>;
 };
 ```
 
@@ -220,10 +198,10 @@ concept Drawable = requires(T t, Renderer& r) {
 Coroutine return types are named with a `Task` or `Coroutine` suffix. `co_await`, `co_yield`, and `co_return` are always on their own line.
 
 ```cpp
-Task ghost_behaviour(Ghost& ghost) {
+Task poll_loop(Widget& widget) {
     while (true) {
-        co_await scatter_phase(ghost, SCATTER_DURATION);
-        co_await chase_phase(ghost, CHASE_DURATION);
+        co_await wait_for_event(widget, EVENT_TIMEOUT);
+        co_await handle_event(widget);
     }
 }
 ```
@@ -233,32 +211,32 @@ Task ghost_behaviour(Ghost& ghost) {
 Sections appear in this order, each preceded by its access specifier:
 
 ```cpp
-export class Game {
+export class Application {
 public:
     // 1. constructors and destructor
-    Game();
-    ~Game() = default;
+    Application();
+    ~Application() = default;
 
     // 2. deleted copy/move (if non-copyable)
-    Game(const Game&)            = delete;
-    Game& operator=(const Game&) = delete;
+    Application(const Application&)            = delete;
+    Application& operator=(const Application&) = delete;
 
     // 3. public methods
-    void update(const InputState& input);
-    void render(Renderer& renderer);
+    void update(const Input& input);
+    void render(Context& ctx);
 
     // 4. [[nodiscard]] queries last among public methods
     [[nodiscard]] bool is_running() const { return running_; }
 
 private:
     // 5. private methods
-    void render_map(Renderer& renderer);
-    void render_player(Renderer& renderer);
+    void render_background(Context& ctx);
+    void render_foreground(Context& ctx);
 
     // 6. member variables — one per line, aligned trailing underscores
-    TileMap  map_;
-    Player   player_;
-    bool     running_ = true;
+    WidgetTree tree_;
+    Input      input_;
+    bool       running_ = true;
 };
 ```
 
@@ -269,15 +247,17 @@ Comment *why*, not *what*. The code says what it does. Comments explain decision
 
 ```cpp
 // correct — explains a non-obvious decision
-// Naive collision: check destination tile before moving.
-// Good enough for Phase 1; replace with swept AABB in Phase 3.
-if (tile_at(player_.x + dx, player_.y) != Tile::Wall)
-    player_.x += dx;
+// Linear scan: widgets_ stays under 50 entries in practice; a hash
+// index would add complexity for no measurable benefit here.
+if (contains(widgets_, target)) {
+    remove(widgets_, target);
+}
 
 // wrong — restates what the code already says
-// check if tile is not a wall
-if (tile_at(player_.x + dx, player_.y) != Tile::Wall)
-    player_.x += dx;
+// check if target is in widgets
+if (contains(widgets_, target)) {
+    remove(widgets_, target);
+}
 ```
 
 ### Format
@@ -288,7 +268,7 @@ Use `// TODO(phaseN):` to flag work deferred to a later phase.
 
 ```cpp
 // TODO(phase3): replace with coroutine-based state machine
-ghost.update_placeholder(player_);
+widget.update_placeholder();
 ```
 
 # Reference

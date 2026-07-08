@@ -633,6 +633,29 @@ private:
 #endif  // PROJECT_MODULE_WIDGET_H
 ```
 
+### Module Structure (C++20)
+
+If the project uses C++20 modules, every module file follows this layout, in this order:
+
+```cpp
+module;                              // 1. global module fragment opens here
+#include <external_headers.h>        // 2. external includes go here (third-party
+                                      //    C headers, STL if not imported as modules)
+
+export module project.feature;       // 3. module declaration
+
+import project.other_feature;        // 4. imports of other project modules only
+import project.support;
+
+// 5. exported declarations
+export class Widget { ... };
+export void do_thing();
+
+// 6. non-exported implementation (or in a separate .cpp)
+```
+
+Project modules import other project modules directly (`import project.x;`); nothing gets `import <...>` unless the project has explicitly opted into standard library header units. Module names use `lower.dot.separated` form matching the project's namespace hierarchy — see the project's own style rules for the exact convention in use.
+
 ### Naming Conventions
 
 ```cpp
