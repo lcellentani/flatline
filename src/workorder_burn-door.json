@@ -1,0 +1,15 @@
+{
+  "interpretation": "Player douses the north door in oil and sets it ablaze to burn through the lock.",
+  "ruling": "allow",
+  "modifiers": [
+  ],
+  "effects_on_success": [
+    { "type": "set_object_state", "object": "door_north", "property": "locked", "value": false },
+    { "type": "transfer_item", "item": "oil_flask", "from": "player", "to": "__void__" },
+    { "type": "modify_disposition", "entity": "guard_01", "delta": -1 }
+  ],
+  "narration_on_success": "The oil catches fast and the door goes up in flame, lock and all. Across the room the guard shoots to his feet, suspicion plain on his face, and heads straight for the smoke.",
+  "effects_on_failure": [
+  ],
+  "narration_on_failure": ""
+}

@@ -1,0 +1,17 @@
+{
+  "interpretation": "Player shoves the guard into the flames engulfing the door.",
+  "ruling": "allow",
+  "modifiers": [
+    { "label": "guard fixated on the fire, not the player", "value": 2 },
+    { "label": "guard already on edge from the fire, quick to react", "value": -1 }
+  ],
+  "effects_on_success": [
+    { "type": "damage", "source": "player", "target": "guard_01", "via": "__fire__", "amount": 14 }
+  ],
+  "narration_on_success": "The guard barely turns before the player drives him backward into the blaze — he stiffens, then crumples, unconscious, at the foot of the burning door.",
+  "effects_on_failure": [
+    { "type": "damage", "source": "guard_01", "target": "player", "via": "__unarmed__", "amount": 1 },
+    { "type": "modify_disposition", "entity": "guard_01", "delta": -1 }
+  ],
+  "narration_on_failure": "The guard catches himself on the doorframe and rounds on the player with a hard shove of his own. \"You're done,\" he snarls, eyes as bright as the fire behind him."
+}

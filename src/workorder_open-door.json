@@ -1,0 +1,18 @@
+{
+  "interpretation": "Player unlocks the north door with the guard's key and slips out while he's turned away.",
+  "ruling": "allow",
+  "modifiers": [
+    { "label": "guard distracted", "value": 2 },
+    { "label": "player moves quietly", "value": 2 }
+  ],
+  "effects_on_success": [
+    { "type": "set_object_state", "object": "door_north", "property": "locked", "value": false },
+    { "type": "transfer_item", "item": "key_north", "from": "player", "to": "__void__" }
+  ],
+  "narration_on_success": "The lock gives with a soft click. The guard never turns around; the player eases the door open and is gone.",
+  "effects_on_failure": [
+    { "type": "transfer_item", "item": "key_north", "from": "player", "to": "guard_01" },
+    { "type": "modify_disposition", "entity": "guard_01", "delta": -2 }
+  ],
+  "narration_on_failure": "The key catches loud in the lock — the guard's head snaps around, and he crosses the room in three strides to wrench it from your hand. \"Try that again,\" he growls, \"and the ransom offer's off the table.\""
+}
