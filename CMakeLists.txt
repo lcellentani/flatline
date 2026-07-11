@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.24)
+# 3.28+ for native C++20 module (FILE_SET CXX_MODULES) support.
+cmake_minimum_required(VERSION 3.28)
 project(flatline CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -53,5 +54,10 @@ target_include_directories(imgui PUBLIC
 )
 target_link_libraries(imgui PUBLIC SDL3::SDL3 OpenGL::GL)
 
-flatline_add_executable(woz_gui src/woz_gui.cpp)
+flatline_add_executable(woz_gui src/woz_gui.cpp src/app.cpp)
+target_sources(woz_gui PRIVATE
+    FILE_SET CXX_MODULES
+    BASE_DIRS src
+    FILES src/app.ixx
+)
 target_link_libraries(woz_gui PRIVATE imgui)
