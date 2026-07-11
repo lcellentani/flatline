@@ -18,9 +18,11 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 ### Approach
 
 - Extract the already-proven per-turn pipeline (modifier budget → roll → gauntlet → apply → log) out of the single-turn demo into a shared `gm_turn.hpp`, so every front end calls one implementation instead of forking it — the same "one computation, not two copies" discipline already applied to `apply_one` and `modifier_magnitude_sum`.
-- Two front ends share that one pipeline: a plain stdin/stdout CLI loop (`woz_loop.cpp`, file-based WorkOrder authoring, scriptable for regression runs) and an SDL3 + OpenGL3 + Dear ImGui desktop tool (`woz_gui.cpp`) for live Experiment-1 sessions, with four panels — player input, GM WorkOrder editing, room description, session log.
-- The GM WorkOrder panel is a raw JSON text box, not a structured per-effect-type form. Matches the project's own explicit non-goal of technical polish (spec §3) and the "instance-is-schema" text-first precedent already used for every room/work-order file in the codebase; binding UI widgets to the 6-primitive `variant` is real work that tests nothing about "is it fun."
-- The Player Input panel is a free-text scratchpad only — it doesn't get its own schema field or persistence. The information it captures already has a home: the WorkOrder's own `interpretation` field, which the GM types based on it and which is already logged. No parallel storage of the same fact.
+- Two front ends share that one pipeline: a plain stdin/stdout CLI loop (`woz_loop.cpp`, file-based WorkOrder authoring, scriptable for regression runs) and an SDL3 + OpenGL3 + Dear ImGui desktop tool (`woz_gui.cpp`) for live Experiment-1 sessions, with three panels — room description, GM WorkOrder editing, and a session log (entry list + JSON detail view).
+- The GM WorkOrder panel is a raw JSON text box, not a structured per-effect-type form. Matches the project's own explicit non-goal of technical polish (spec §3) and the "instance-is-schema" text-first precedent already used for every room/work-order file in the codebase; binding UI widgets to the 6-primitive `variant` is real work that tests nothing about "is it fun." A richer, form-based editor (dropdown modifier pickers, per-effect-type sub-forms) stays out of scope unless real Experiment-1 sessions show raw-JSON authoring is actually the friction point — that would justify its own SPEC, not speculative upfront investment.
+- A dedicated Player Input panel was considered and cut during Phase 3 exec planning (`docs/exec/phase-3-woz-gui.md`): a free-text scratchpad with no schema field, no persistence, and no logging just gets manually retyped, in different words, into the WorkOrder's own `interpretation` field a few inches away — friction with no payoff, not a real capability. `interpretation` remains the one place player intent lives, same as it always did.
+- The Log panel is a selectable entry list plus a pretty-printed JSON detail view, not a flat scrolling transcript — also decided during Phase 3 exec planning, motivated by a concrete pain point from Phase 2's own manual AC verification (a raw `session_log.jsonl` line is a single-line JSON blob, unreadable without an external pretty-printer). Reuses `gm_log.hpp`'s existing `to_json(LogEntry)` rather than inventing a second, parallel summarization.
+- The GM WorkOrder panel gets the same list + detail shape, on the write side — decided in a follow-up Phase 3 exec planning pass. It keeps the raw-JSON editable buffer (previous bullet, unaffected) but adds a selectable list feeding it: this session's own past turns (already in memory) plus a `workorders/` folder of saved templates on disk. Selecting a row shows a **read-only preview**; an explicit **Load into editor** action is the only thing that overwrites the live draft, so casual browsing can never silently lose in-progress work.
 - Phase 0 stands up the actual local dev environment for the first time. Everything up to now was drafted in chat and validated in an ad hoc sandbox, not on a real machine with persisted state — no repo, no git history, no toolchain. It vendors the one existing external dependency (`nlohmann/json`) and introduces Clang + Ninja + `CMakePresets.json` + clangd once, up front, covering the files that already exist — so Phases 1–3 build on a real, working local baseline instead of each assuming one already exists.
 - CMake, once introduced in Phase 0, is only ever *extended*: Phase 2 adds a `woz_loop` target, Phase 3 adds `woz_gui`. Neither touches the toolchain again — the Clang/Ninja/compile_commands.json setup and the one-time GCC→Clang verification both live in Phase 0, where the switch actually first happens.
 
@@ -30,7 +32,7 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 - Local dev environment: git repo, vendored `nlohmann/json`, and the Clang + Ninja + CMake + clangd toolchain (Phase 0)
 - Shared turn-processing pipeline (`gm_turn.hpp`)
 - Headless CLI multi-turn loop (`woz_loop.cpp`)
-- SDL3 + OpenGL3 + Dear ImGui desktop tool (`woz_gui.cpp`) with the four named panels
+- SDL3 + OpenGL3 + Dear ImGui desktop tool (`woz_gui.cpp`) with the three named panels
 - Minimal CMake build covering existing + new targets, behavior-preserving for existing ones
 
 **Out of Scope** (pulled from `gm-adjudicator.md` §3, plus additions specific to this plan):
@@ -226,17 +228,16 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 - Running `woz_gui` opens a window and renders an empty ImGui frame without crashing, closing cleanly on window-close.
 - No ImGui/SDL3 console warnings (unmatched `Begin`/`End`, double context init, etc.).
 
-#### Task 3.4: Four-panel layout and turn submission
+#### Task 3.4: Three-panel layout and turn submission
 
 **File:** `woz_gui.cpp` (extends Task 3.3's shell)
 **Tag:** T2 — panel layout and interaction flow (what each panel owns, when Submit is enabled) are real UI decisions worth a quick pass; wiring into `process_turn`/`dump`/`log::Outcome` is mechanical reuse of already-proven code.
 
 **Changes:**
 - **Room Description panel** — read-only scrollable text rendering `dump(world)`, the same function already used by the demo and the CLI loop.
-- **Player Input panel** — a free-text field, display-only, no schema field of its own (see Approach).
-- **GM WorkOrder panel** — a multi-line raw-JSON text box (`InputTextMultiline`), pre-seeded with a blank WorkOrder skeleton each turn. A "Submit Turn" button parses its contents via the existing, unchanged `parse_work_order` and calls `gm_turn::process_turn`.
-- **Log panel** — scrollable, append-only view built from each turn's returned `log::Outcome`: player's stated intent, GM's narration, roll info, or rejection reason, in submission order.
-- Malformed JSON in the WorkOrder panel is caught at the Submit handler and shown inline as a parse error — it does not advance `turn_number` or touch `World` (new behavior the CLI/demo never needed, since they only ever read well-formed files off disk).
+- **GM WorkOrder panel** — a multi-line raw-JSON text box (`InputTextMultiline`) as the editable submit buffer, alongside a list sidebar with two groups: this session's own past turns, and saved files from a `workorders/` folder. Selecting a list row shows a read-only preview; a "Load into editor" button copies it into the editable buffer. A "Submit Turn" button parses the editable buffer's contents via the existing, unchanged `parse_work_order` and calls `gm_turn::process_turn`.
+- **Log panel** — a selectable list of one-line entries (turn number, status, short teaser) plus a detail sub-pane showing the selected entry's full `log::LogEntry`, pretty-printed as JSON (reuses `gm_log.hpp`'s existing `to_json`, so the view is structurally identical to the corresponding line in the session log file). Newly-submitted entries auto-select themselves.
+- Malformed JSON in the WorkOrder panel is caught at the Submit handler and shown inline as a parse error — it does not advance `turn_number`, touch `World`, or add an entry to either the Log panel or the WorkOrder panel's session-history group (new behavior the CLI/demo never needed, since they only ever read well-formed files off disk).
 - On `rules::session_over(world)` after an applied turn: a session-over banner is shown and Submit is disabled; the window stays open so the log/history remains viewable.
 - Session log written to its own file, mirroring `woz_loop`'s convention.
 
@@ -244,7 +245,8 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 - Room Description panel's text matches `dump(world)` byte-for-byte for the same `World`.
 - Submitting `workorder_bribe.json`'s contents pasted into the panel advances the turn exactly as `woz_loop` would for the same input — same narration, same resulting gold/inventory, same log-entry shape.
 - Submitting malformed JSON shows an inline error and leaves `turn_number` and `World` unchanged.
-- The Log panel accumulates one entry per submitted turn in submission order, each showing the player's stated intent alongside the GM's narration/outcome.
+- The Log panel's entry list accumulates one row per submitted turn in submission order; selecting a row shows its full `LogEntry` as pretty-printed JSON, structurally identical to the corresponding line in the session log file.
+- Selecting a row in the WorkOrder panel's list (either group) updates a read-only preview without altering the editable buffer; only the explicit "Load into editor" action overwrites it.
 - A staged sequence of WorkOrders driving the player to `Dead` shows the session-over banner and disables Submit, without closing the window.
 
 **Rollback:** git revert the phase's commit(s) — this phase only adds `woz_gui.cpp`, the vendored ImGui sources, and one new CMake target; Phase 0's toolchain and the five pre-existing targets are untouched either way.
@@ -263,7 +265,7 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 | `wizard_of_oz_demo.cpp` | Refactor steps 4–6c to call `gm_turn::process_turn`; steps 1–3, 7–9 untouched | -60/+15 | Low |
 | `woz_loop.cpp` | **New** — headless multi-turn CLI loop, file-based authoring, scriptable for regression runs | ~90 | Medium |
 | `third_party/imgui/**` | **New** — vendored Dear ImGui + SDL3 backend + OpenGL3 backend, unmodified upstream | N/A (vendored) | Low |
-| `woz_gui.cpp` | **New** — SDL3 + OpenGL3 + Dear ImGui desktop tool: 4 panels + turn submission | ~300 | Medium |
+| `woz_gui.cpp` | **New** — SDL3 + OpenGL3 + Dear ImGui desktop tool: 3 panels (list+detail Log) + turn submission | ~300 | Medium |
 
 ---
 
