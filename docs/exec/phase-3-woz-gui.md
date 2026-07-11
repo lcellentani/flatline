@@ -122,6 +122,8 @@ Confirm the exact SDL3 CMake option names (`SDL_STATIC`/`SDL_SHARED`/`SDL_TEST_L
 - Running `woz_gui` opens a window and renders an empty ImGui frame without crashing, closing cleanly on window-close.
 - No ImGui/SDL3 console warnings (unmatched `Begin`/`End`, double context init, etc.).
 
+**Verified (2026-07-11):** `src/woz_gui.cpp` replaces Task 3.2's link-proof placeholder with the real shell: init order, main loop, and shutdown order all match §3 exactly, including `io.ConfigFlags |= ImGuiConfigFlags_DockingEnable` (no `ViewportsEnable`) and `glsl_version = "#version 130"`. The frame body between `NewFrame()`/`Render()` is empty, per this task's own AC — Task 3.4 fills it in. `cmake --build build --preset default --target woz_gui` builds clean (no warnings); running the binary produces no console output on init or shutdown. First review pass found two gaps against this plan (missing `DockingEnable`, and leftover stock ImGui demo content in the frame body instead of an empty one) — both fixed and re-verified.
+
 ---
 
 ## 4. Three-panel docked layout and turn submission (Task 3.4)
@@ -327,4 +329,4 @@ Unlike `woz_loop`, this is a windowed app — these steps are meant to be run by
 1. `cmake --build build --preset default` — `woz_gui` builds cleanly alongside the six existing targets, which must show unchanged pass counts (`test_gauntlet` 22/22, `test_log` 37/37, `test_applier` 31/31, `test_roll` 20/20, `test_turn` 18/18, `woz` exit 0).
 2. Run the §7 walkthroughs against the built `woz_gui` binary; record results here the same way `docs/exec/phase-2-woz-loop.md` records its own post-implementation verification.
 
-**Progress (2026-07-11):** Tasks 3.1 and 3.2 are implemented and verified (see their own **Verified** notes above) — vendoring is in place, `CMakeLists.txt` is wired, and the full build (six pre-existing targets + `woz_gui`) succeeds with `src/woz_gui.cpp` still just Task 3.2's minimal link-proof placeholder. Tasks 3.3 (real application shell) and 3.4 (three-panel layout, WorkOrder list/preview/load, turn submission) are **not started** — §7's Task 3.3/3.4 walkthrough steps don't apply yet.
+**Progress (2026-07-11):** Tasks 3.1, 3.2, and 3.3 are implemented and verified (see their own **Verified** notes above) — vendoring is in place, `CMakeLists.txt` is wired, and `src/woz_gui.cpp` now has the real SDL3+OpenGL3+ImGui shell (docking-enabled, empty per-frame body) in place of Task 3.2's link-proof placeholder. Task 3.4 (three-panel layout, WorkOrder list/preview/load, turn submission) is **not started** — §7's Task 3.4 walkthrough steps don't apply yet.

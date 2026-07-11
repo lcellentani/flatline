@@ -26,6 +26,19 @@
     },
   },
   {
+    "label": "Debug woz_gui",
+    "adapter": "CodeLLDB",
+    "request": "launch",
+    "program": "$ZED_WORKTREE_ROOT/build/bin/woz_gui.exe",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "build": {
+      "label": "cmake: build",
+      "command": "cmake",
+      "args": ["--build", "--preset", "default"],
+      "cwd": "$ZED_WORKTREE_ROOT",
+    },
+  },
+  {
     "label": "Debug test_gauntlet",
     "adapter": "CodeLLDB",
     "request": "launch",
