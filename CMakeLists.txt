@@ -30,3 +30,28 @@ flatline_add_executable(test_roll src/test_roll.cpp)
 flatline_add_executable(test_turn src/test_turn.cpp)
 flatline_add_executable(woz src/wizard_of_oz_demo.cpp)
 flatline_add_executable(woz_loop src/woz_loop.cpp)
+
+# SDL3: static link, no runtime DLL to copy alongside woz_gui.exe
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+add_subdirectory(third_party/SDL3)
+
+find_package(OpenGL REQUIRED)
+
+add_library(imgui STATIC
+    third_party/imgui/imgui.cpp
+    third_party/imgui/imgui_draw.cpp
+    third_party/imgui/imgui_tables.cpp
+    third_party/imgui/imgui_widgets.cpp
+    third_party/imgui/backends/imgui_impl_sdl3.cpp
+    third_party/imgui/backends/imgui_impl_opengl3.cpp
+)
+target_include_directories(imgui PUBLIC
+    third_party/imgui
+    third_party/imgui/backends
+)
+target_link_libraries(imgui PUBLIC SDL3::SDL3 OpenGL::GL)
+
+flatline_add_executable(woz_gui src/woz_gui.cpp)
+target_link_libraries(woz_gui PRIVATE imgui)

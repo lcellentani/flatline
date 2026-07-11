@@ -185,30 +185,38 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 
 ---
 
-### Phase 3: SDL3 + OpenGL3 + Dear ImGui Desktop Tool — Not Started
+### Phase 3: SDL3 + OpenGL3 + Dear ImGui Desktop Tool — In Progress
 
-**Objective:** A live, four-panel Experiment-1 session tool built on the same shared pipeline, for the actual "is it fun" playtests.
+**Objective:** A live, three-panel Experiment-1 session tool built on the same shared pipeline, for the actual "is it fun" playtests.
 
-#### Task 3.1: Vendor Dear ImGui + SDL3 + OpenGL3 backends
+#### Task 3.1: Vendor SDL3 + Dear ImGui + OpenGL3 backends — Done
 
-**New Files:** `third_party/imgui/**` (core: `imgui.cpp/.h`, `imgui_draw.cpp`, `imgui_tables.cpp`, `imgui_widgets.cpp`; backends: `imgui_impl_sdl3.cpp/.h`, `imgui_impl_opengl3.cpp/.h`)
+**New Files:** `third_party/SDL3/**` (full upstream source tree); `third_party/imgui/**` (core: `imgui.h/.cpp`, `imconfig.h`, `imgui_internal.h`, `imgui_draw.cpp`, `imgui_tables.cpp`, `imgui_widgets.cpp`, `imstb_*.h`; backends: `imgui_impl_sdl3.cpp/.h`, `imgui_impl_opengl3.cpp/.h/_loader.h`)
 **Tag:** T4 — vendoring unmodified upstream source; no authored logic, nothing to own.
 
+**Verified (2026-07-11):** Both vendored per `docs/exec/phase-3-woz-gui.md` §1 (that doc records the reasoning for the two real decisions made here — SDL3 vendored as full source rather than vcpkg/system-install, and ImGui pinned to the `docking` branch rather than a tagged `master` release). SDL3 at tag `release-3.4.12` (commit `f87239e`), full tree, `.git` stripped, vendoring note at `third_party/SDL3/VENDOR.md` (not `README.md` — SDL3 ships its own, which stays untouched). ImGui at `docking`-branch commit `6029ee3`, selective file list, vendoring note at `third_party/imgui/VENDOR.md`. One real gap surfaced during Task 3.2's build and was fixed: `imconfig.h` is required by `imgui.h` but was missing from the original vendor list; fetched at the pinned commit and added, and the exec plan's own file list corrected to match.
+
 **Changes:**
-- Vendor a pinned Dear ImGui release tag with its official SDL3 + OpenGL3 backend pair.
-- Record the exact vendored tag/commit in a comment or short README so it's reproducible later.
+- Vendor SDL3's full upstream source tree, pinned to a specific release tag, as a plain source drop (no `.git`, not a submodule).
+- Vendor a pinned Dear ImGui `docking`-branch commit with its official SDL3 + OpenGL3 backend pair — selective file list, not the whole upstream tree.
+- Record the exact vendored tag/commit for both in a short vendoring note so each is reproducible later.
 
 **Acceptance Criteria:**
-- Vendored files are byte-identical to the pinned upstream tag (empty diff).
-- The vendored tag/commit is recorded somewhere in the repo.
+- Vendored files are byte-identical to the pinned upstream tag/commit (empty diff).
+- The vendored tag/commit is recorded somewhere in the repo, for both SDL3 and ImGui.
 
-#### Task 3.2: Add the `woz_gui` target
+#### Task 3.2: Add the `woz_gui` target — Done
 
 **File:** `CMakeLists.txt` (extends Phase 0's file)
 **Tag:** T2 — wiring `find_package(SDL3)`/OpenGL correctly is a real "does this link on your machine" risk worth a quick pass; the toolchain itself (Clang, Ninja, presets, compile_commands) is already in place from Phase 0 and isn't touched here.
 
+**Verified (2026-07-11):** `cmake --preset default && cmake --build build --preset default` succeeds end to end — SDL3 built as a static lib via `add_subdirectory` (not `find_package`, since it's vendored as source per Task 3.1, not installed), `imgui` built as a static lib linking `SDL3::SDL3` + `OpenGL::GL`, and `woz_gui` links against both. `woz_gui.exe` runs and exits 0. A minimal placeholder `src/woz_gui.cpp` was added to actually exercise this AC ahead of Task 3.3 — not the real shell, just enough (`SDL_Init`/`Quit`, `ImGui::CreateContext`/`DestroyContext`) to prove the link is real. All five pre-existing suites re-ran at unchanged counts (`test_gauntlet` 22/22, `test_log` 37/37, `test_applier` 31/31, `test_roll` 20/20, `test_turn` 18/18), plus `woz` exit 0 and `woz_loop` untouched.
+
 **Changes:**
-- Add a `woz_gui` target linking the vendored ImGui/backends (Task 3.1) against `find_package(SDL3 REQUIRED)` and OpenGL.
+- Vendor options set before `add_subdirectory(third_party/SDL3)`: static link only (`SDL_STATIC ON`/`SDL_SHARED OFF`), no test library — avoids a runtime DLL to copy alongside `woz_gui.exe`.
+- `find_package(OpenGL REQUIRED)` — system dependency, ships with the OS/SDK, not vendored.
+- A hand-rolled `imgui` static library target (ImGui has no CMake build of its own) compiling the Task 3.1 file list, linking `SDL3::SDL3` + `OpenGL::GL` `PUBLIC` so `woz_gui` picks up both transitively.
+- Add a `woz_gui` target linking the `imgui` library.
 - No changes to `CMakePresets.json` or to the five pre-existing targets — they're already on Clang/Ninja since Phase 0.
 
 **Acceptance Criteria:**

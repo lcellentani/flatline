@@ -28,7 +28,7 @@ Everything else below either follows mechanically from those five calls or fills
 
 Vendor the **full upstream source tree** at tag `release-3.4.12` (or whatever's current at implementation time), not a pruned subset. This is a deliberate asymmetry with ImGui's selective vendoring (§1.2): ImGui is a fixed, short file list with no build system of its own, so pinning exactly the files we use is safe and cheap. SDL3 is a full library with its own CMake build that conditionally compiles per-subsystem internals (video backends, audio, joystick/haptics, etc.) — hand-pruning that tree is fragile and unsupported upstream. Check in the whole thing; `add_subdirectory` only builds what our CMake options ask for (§2).
 
-- `third_party/SDL3/README.md` records the pinned tag, same pattern as Task 0.2's `nlohmann/README.md`.
+- `third_party/SDL3/VENDOR.md` records the pinned tag, same pattern as Task 0.2's `nlohmann/README.md` — named `VENDOR.md` rather than `README.md` (found during implementation): SDL3's own upstream tree already ships its own `README.md`, and this is a full-tree vendor (§1.1), so `README.md` would collide with — and, if written to, corrupt — a real upstream file. `imgui`'s vendor note uses the same `VENDOR.md` name for consistency, even though it has no such collision (§1.2's vendor is selective, no upstream `README.md` included).
 - Plain vendored copy (source drop, not a git submodule) — matches every other `third_party/` entry in this repo.
 
 ### 1.2 Dear ImGui (`docking` branch) — `third_party/imgui/`
@@ -38,6 +38,7 @@ Selective vendor, matching the plan's existing Task 3.1 file list, plus `imgui_i
 ```
 third_party/imgui/
   imgui.h / imgui.cpp
+  imconfig.h                (imgui.h unconditionally #includes this — required, not optional)
   imgui_internal.h          (DockBuilder API — internal but unmodified upstream)
   imgui_draw.cpp
   imgui_tables.cpp
@@ -50,11 +51,13 @@ third_party/imgui/
 
 `imgui_demo.cpp` is deliberately **not** vendored — nothing calls `ImGui::ShowDemoWindow()`, so it's dead weight. No separate GL loader library (glad/glew/gl3w): the OpenGL3 backend ships its own minimal bundled loader (`imgui_impl_opengl3_loader.h`), which is why it's listed above instead of a new `third_party/` entry.
 
-Pinned to the `docking` branch's commit SHA (not a version tag — docking doesn't cut its own tagged releases). `third_party/imgui/README.md` records the exact SHA and the branch name, and explicitly notes *why* docking over master (§ Context above), so a future reader doesn't have to re-derive the reasoning.
+Pinned to the `docking` branch's commit SHA (not a version tag — docking doesn't cut its own tagged releases). `third_party/imgui/VENDOR.md` records the exact SHA and the branch name, and explicitly notes *why* docking over master (§ Context above), so a future reader doesn't have to re-derive the reasoning.
 
 **Acceptance Criteria (Task 3.1):**
-- `third_party/SDL3` present, full tree, `README.md` records the pinned tag; empty diff against that tag.
-- `third_party/imgui` present with exactly the file list above; `README.md` records the pinned `docking`-branch commit SHA; each vendored file is byte-identical to that commit (per-file diff, since only a subset of the upstream repo is checked in — there's no whole-tree diff to run).
+- `third_party/SDL3` present, full tree, `VENDOR.md` records the pinned tag; empty diff against that tag.
+- `third_party/imgui` present with exactly the file list above; `VENDOR.md` records the pinned `docking`-branch commit SHA; each vendored file is byte-identical to that commit (per-file diff, since only a subset of the upstream repo is checked in — there's no whole-tree diff to run).
+
+**Implementation note (2026-07-11):** `imconfig.h` was missing from the original file list above (now corrected) — `imgui.h` `#include`s it unconditionally, so the build failed with `fatal error: 'imconfig.h' file not found` until it was fetched and added. Fixed by pulling it directly at the pinned commit SHA (`curl` against `raw.githubusercontent.com/ocornut/imgui/6029ee3.../imconfig.h`), same content a `git show <sha>:imconfig.h` would produce.
 
 ---
 
@@ -100,6 +103,8 @@ Confirm the exact SDL3 CMake option names (`SDL_STATIC`/`SDL_SHARED`/`SDL_TEST_L
 - `cmake --build` (existing preset) additionally produces `woz_gui`.
 - `woz_gui` links successfully against the vendored SDL3 and system OpenGL.
 - The five pre-existing targets and `woz_loop` are unaffected — same pass counts as Phase 2 left them.
+
+**Verified (2026-07-11):** `cmake --preset default && cmake --build build --preset default` succeeds end to end (SDL3 static lib, `imgui` static lib, all six pre-existing targets, and `woz_gui`). To actually exercise this AC before Task 3.3 exists, a **minimal placeholder** `src/woz_gui.cpp` was added — not Task 3.3's real windowed shell, just enough to prove the link is real rather than trivially empty: it calls `SDL_Init`/`SDL_Quit` and `ImGui::CreateContext`/`DestroyContext`, nothing else. `woz_gui.exe` runs and exits 0. All five pre-existing suites re-ran at unchanged counts (`test_gauntlet` 22/22, `test_log` 37/37, `test_applier` 31/31, `test_roll` 20/20, `test_turn` 18/18) plus `woz` exit 0 and `woz_loop` untouched. Task 3.3 will replace this placeholder with the real shell.
 
 ---
 
@@ -321,3 +326,5 @@ Unlike `woz_loop`, this is a windowed app — these steps are meant to be run by
 
 1. `cmake --build build --preset default` — `woz_gui` builds cleanly alongside the six existing targets, which must show unchanged pass counts (`test_gauntlet` 22/22, `test_log` 37/37, `test_applier` 31/31, `test_roll` 20/20, `test_turn` 18/18, `woz` exit 0).
 2. Run the §7 walkthroughs against the built `woz_gui` binary; record results here the same way `docs/exec/phase-2-woz-loop.md` records its own post-implementation verification.
+
+**Progress (2026-07-11):** Tasks 3.1 and 3.2 are implemented and verified (see their own **Verified** notes above) — vendoring is in place, `CMakeLists.txt` is wired, and the full build (six pre-existing targets + `woz_gui`) succeeds with `src/woz_gui.cpp` still just Task 3.2's minimal link-proof placeholder. Tasks 3.3 (real application shell) and 3.4 (three-panel layout, WorkOrder list/preview/load, turn submission) are **not started** — §7's Task 3.3/3.4 walkthrough steps don't apply yet.
