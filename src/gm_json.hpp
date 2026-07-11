@@ -160,9 +160,9 @@ inline void from_json(const json& j, Effect& e) {
 // ---- ruling, modifier, work order ------------------------------------------
 inline void to_json(json& j, const Ruling& r) {
     switch (r) {
-        case Ruling::Allow:   j = "allow";   break;
+        case Ruling::Allow: j = "allow"; break;
         case Ruling::Partial: j = "partial"; break;
-        case Ruling::Deny:    j = "deny";    break;
+        case Ruling::Deny: j = "deny"; break;
     }
 }
 inline void from_json(const json& j, Ruling& r) {

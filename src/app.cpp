@@ -17,7 +17,7 @@ namespace {
 
 constexpr const char* kGlslVersion = "#version 130";
 constexpr const char* kWindowTitle = "Flatline - WoZ GUI";
-constexpr ImVec4      kClearColor  = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+constexpr ImVec4 kClearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 }  // namespace
 

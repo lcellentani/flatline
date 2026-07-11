@@ -19,11 +19,11 @@ namespace gm {
 // delta arithmetic is well-defined; the JSON bridge maps to/from the labels
 // below so authored rooms and state dumps stay human-legible.
 namespace disposition {
-    inline constexpr int Hostile    = -2;
+    inline constexpr int Hostile = -2;
     inline constexpr int Unfriendly = -1;
-    inline constexpr int Neutral    =  0;
-    inline constexpr int Friendly   =  1;
-    inline constexpr int Allied     =  2;
+    inline constexpr int Neutral = 0;
+    inline constexpr int Friendly = 1;
+    inline constexpr int Allied = 2;
 }
 
 struct Exit {

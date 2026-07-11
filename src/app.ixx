@@ -32,10 +32,10 @@ public:
 
     ~App();
 
-    App(const App&)            = delete;
+    App(const App&) = delete;
     App& operator=(const App&) = delete;
-    App(App&&)                 = delete;
-    App& operator=(App&&)      = delete;
+    App(App&&) = delete;
+    App& operator=(App&&) = delete;
 
     void run(const FrameCallback& on_frame = {});
 
@@ -49,8 +49,8 @@ private:
     void poll_events();
     void render_frame(const FrameCallback& on_frame);
 
-    SDL_Window*   window_;
+    SDL_Window* window_;
     SDL_GLContext gl_context_;
-    ImGuiIO*      io_;
-    bool          done_ = false;
+    ImGuiIO* io_;
+    bool done_ = false;
 };

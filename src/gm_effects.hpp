@@ -43,7 +43,7 @@ struct ItemTag {};
 
 using EntityId = Id<EntityTag>;  // e.g. "guard_01", "player"
 using ObjectId = Id<ObjectTag>;  // e.g. "door_north"
-using ItemId   = Id<ItemTag>;    // e.g. "key_north", "oil_flask"
+using ItemId = Id<ItemTag>;      // e.g. "key_north", "oil_flask"
 
 // Reserved sink entity representing "consumed" / "destroyed". Formalizes
 // the spec's informal `<consumed>` target from the burn-the-door worked
