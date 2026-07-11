@@ -7,9 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 set(FLATLINE_JSON_FIXTURES
-    ${CMAKE_SOURCE_DIR}/src/room_guardroom.json
-    ${CMAKE_SOURCE_DIR}/src/workorder_bribe.json
-    ${CMAKE_SOURCE_DIR}/src/workorder_hallucinated.json
+    ${CMAKE_SOURCE_DIR}/res/room_guardroom.json
+    ${CMAKE_SOURCE_DIR}/res/workorder_bribe.json
+    ${CMAKE_SOURCE_DIR}/res/workorder_hallucinated.json
 )
 
 function(flatline_add_executable name)
