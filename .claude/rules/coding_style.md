@@ -26,6 +26,7 @@ Follow the [Google C++ Style Guide](https://google.github.io/styleguide/cppguide
 |---|---|---|
 | Indentation | 2 spaces | 4 spaces |
 | Pointer alignment | either side | type side (`void* p`) |
+| Enumerator names | `kEnumName` | `PascalCase` |
 
 Everything else follows Google style as written.
 
@@ -59,26 +60,18 @@ float elapsed_seconds = 0.016f;
 ```
 
 ### Member variables
-Member variables use `snake_case` with a trailing underscore.
-
-```cpp
-class Widget {
-private:
-    Backend*    backend_     = nullptr;
-    EventQueue* event_queue_ = nullptr;
-};
-```
+Member variables use `snake_case` with a trailing underscore — see Class layout below for an example.
 
 ### Constants and enumerators
-Compile-time constants use `UPPER_SNAKE_CASE`. Enum values use `PascalCase`.
+Compile-time constants (`constexpr`/`const`, fixed for the program's duration) use a leading `k` + `MixedCase` — Google's actual Constant Names rule; `UPPER_SNAKE_CASE` is reserved for macros. Enum values use `PascalCase`.
 
 ```cpp
-export constexpr int MAX_WIDGETS     = 256;
-export constexpr int DEFAULT_WIDTH   = 800;
-export constexpr int FRAME_BUDGET_MS = 16;
+export constexpr int kMaxWidgets = 256;
+export constexpr int kDefaultWidth = 800;
+export constexpr int kFrameBudgetMs = 16;
 
 enum class Status : uint8_t {
-    Idle   = 0,
+    Idle = 0,
     Active = 1,
     Closed = 2,
 };
@@ -218,7 +211,7 @@ public:
     ~Application() = default;
 
     // 2. deleted copy/move (if non-copyable)
-    Application(const Application&)            = delete;
+    Application(const Application&) = delete;
     Application& operator=(const Application&) = delete;
 
     // 3. public methods
@@ -233,10 +226,10 @@ private:
     void render_background(Context& ctx);
     void render_foreground(Context& ctx);
 
-    // 6. member variables — one per line, aligned trailing underscores
+    // 6. member variables — one per line
     WidgetTree tree_;
-    Input      input_;
-    bool       running_ = true;
+    Input input_;
+    bool running_ = true;
 };
 ```
 
@@ -313,8 +306,8 @@ public:
 };
 ```
 
-`create()` performs every fallible step, returning `Result<Widget, E>::err(...)` at the first failure; only a fully-valid `Widget` is ever constructed on the success path.
+`create()` performs every fallible step, returning `Expected<Widget, E>::err(...)` at the first failure; only a fully-valid `Widget` is ever constructed on the success path.
 
 # Reference
 
-See skill: `cpp-coding-standards` for comprehensive C++ coding standards and guidelines, **except its Error Handling (E.*) rules** — this project doesn't use exceptions; see `Error Handling` above for the `Result<T, E>` alternative used instead.
+See skill: `cpp-coding-standards` for comprehensive C++ coding standards and guidelines, **except its Error Handling (E.*) rules** — this project doesn't use exceptions; see `Error Handling` above for the `Expected<T, E>` alternative used instead.
