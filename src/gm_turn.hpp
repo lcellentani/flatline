@@ -5,6 +5,7 @@
 #include "gm_log.hpp"
 #include "gm_roll.hpp"
 #include "gm_state.hpp"
+#include <cassert>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -31,6 +32,19 @@
 
 namespace gm::turn {
 
+namespace detail {
+// A log-append failure here means the filesystem itself is failing (disk
+// full, permissions) -- previously this threw uncaught (no process_turn
+// caller wraps it in try/catch), crashing the whole process. Asserting
+// preserves that same "can't happen in practice, loud if it does" behavior
+// without threading an Expected through every process_turn caller for a
+// failure mode this tool has no real recovery story for anyway.
+inline void append_or_die(const std::string& log_path, const log::LogEntry& entry) {
+    [[maybe_unused]] auto result = log::append_to_file(log_path, entry);
+    assert(result.has_value());
+}
+}  // namespace detail
+
 inline std::pair<World, log::Outcome> process_turn(const World& world,
                                                     int64_t turn_number,
                                                     const WorkOrder& wo,
@@ -41,7 +55,7 @@ inline std::pair<World, log::Outcome> process_turn(const World& world,
     if (auto budget_failure = gauntlet::validate_modifiers(wo.modifiers)) {
         log::Outcome outcome = log::ModifierBudgetRejected{
             budget_failure->magnitude_sum, budget_failure->budget, budget_failure->reason};
-        log::append_to_file(log_path, log::LogEntry{turn_number, wo, outcome});
+        detail::append_or_die(log_path, log::LogEntry{turn_number, wo, outcome});
         return {world, outcome};
     }
 
@@ -71,7 +85,7 @@ inline std::pair<World, log::Outcome> process_turn(const World& world,
         log::Outcome outcome = log::Applied{
             roll_info, *applied, selected_narration, world, world_after,
             applier::vital_transitions(world, *applied)};
-        log::append_to_file(log_path, log::LogEntry{turn_number, wo, outcome});
+        detail::append_or_die(log_path, log::LogEntry{turn_number, wo, outcome});
         return {world_after, outcome};
     }
 
@@ -79,7 +93,7 @@ inline std::pair<World, log::Outcome> process_turn(const World& world,
     const auto& f = std::get<gauntlet::Failure>(gauntlet_result);
     log::Outcome outcome = log::GauntletRejected{
         roll_info, f.effect_index, gauntlet::stage_name(f.stage), f.reason, f.conflicting_with_index};
-    log::append_to_file(log_path, log::LogEntry{turn_number, wo, outcome});
+    detail::append_or_die(log_path, log::LogEntry{turn_number, wo, outcome});
     return {world, outcome};
 }
 

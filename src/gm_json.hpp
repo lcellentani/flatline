@@ -1,6 +1,7 @@
 #pragma once
 #include "gm_effects.hpp"
 #include "gm_state.hpp"
+#include "expected.hpp"
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
@@ -18,9 +19,19 @@
 // Experiment 2. One parser, two producers.
 //
 // Closed-vocabulary guarantee: the vocabulary is enforced HERE, at parse time.
-// An effect whose "type" is not one of the seven primitives throws immediately
-// — an invented verb never reaches the gauntlet. (Mapping novel *intent* onto
+// An effect whose "type" is not one of the seven primitives is rejected
+// immediately — parse_work_order/parse_world return Expected::err(...), so an
+// invented verb never reaches the gauntlet. (Mapping novel *intent* onto
 // existing primitives remains the GM's job upstream of the JSON.)
+//
+// No C++ exceptions cross this header's public API (parse_work_order,
+// parse_world) — see coding_style.md. Internally, individual from_json
+// overloads below still `throw` on a bad enum-like string or the closed-
+// vocabulary gate: nlohmann's own recursive ADL dispatch (.at()/.get<T>())
+// has no non-throwing path, so a contained throw is the only way a nested
+// from_json call can signal failure back up through it. parse_work_order/
+// parse_world are the one place that throw is ever caught, converting it to
+// an Expected — nothing upstream of this header ever sees an exception.
 //
 // JSON shapes
 // -----------
@@ -300,8 +311,20 @@ inline void from_json(const json& j, World& w) {
 }
 
 // ---- convenience -----------------------------------------------------------
-inline WorkOrder  parse_work_order(const std::string& s) { return json::parse(s).get<WorkOrder>(); }
-inline World      parse_world(const std::string& s)      { return json::parse(s).get<World>(); }
+inline Expected<WorkOrder, std::string> parse_work_order(const std::string& s) {
+    try {
+        return Expected<WorkOrder, std::string>::ok(json::parse(s).get<WorkOrder>());
+    } catch (const std::exception& ex) {
+        return Expected<WorkOrder, std::string>::err(ex.what());
+    }
+}
+inline Expected<World, std::string> parse_world(const std::string& s) {
+    try {
+        return Expected<World, std::string>::ok(json::parse(s).get<World>());
+    } catch (const std::exception& ex) {
+        return Expected<World, std::string>::err(ex.what());
+    }
+}
 inline std::string dump(const WorkOrder& w, int indent = 2) { return json(w).dump(indent); }
 inline std::string dump(const World& w, int indent = 2)     { return json(w).dump(indent); }
 

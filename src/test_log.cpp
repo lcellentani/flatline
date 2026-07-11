@@ -28,6 +28,7 @@
 #include "gm_json.hpp"
 #include "gm_log.hpp"
 #include "gm_roll.hpp"
+#include <cassert>
 #include <cstdio>
 #include <iostream>
 
@@ -49,7 +50,7 @@ static log::LogEntry build_applied_entry(const World& world, int64_t turn_number
     WorkOrder wo = examples::bribe_the_guard();
 
     auto budget_failure = gauntlet::validate_modifiers(wo.modifiers);
-    if (budget_failure) throw std::runtime_error("fixture should pass the modifier budget");
+    assert(!budget_failure && "fixture should pass the modifier budget");
 
     uint64_t seed = roll::seed_for_turn(turn_number, wo);
     roll::RollResult r = roll::resolve_turn(turn_number, wo);
@@ -59,7 +60,7 @@ static log::LogEntry build_applied_entry(const World& world, int64_t turn_number
 
     auto gauntlet_result = gauntlet::run_gauntlet(world, selected);
     auto* applied_effects = std::get_if<std::vector<Effect>>(&gauntlet_result);
-    if (!applied_effects) throw std::runtime_error("fixture should pass the gauntlet");
+    assert(applied_effects && "fixture should pass the gauntlet");
 
     World world_after = applier::apply(world, *applied_effects);
 
@@ -79,7 +80,7 @@ int main() {
         "objects": [],
         "entities": [{"id": "guard_01", "hp": 10, "disposition": "neutral", "holds": ["key_north"], "persona": ""}],
         "player": {"id": "player", "hp": 10, "gold": 20, "inventory": []}
-    })");
+    })").value();
 
     // --- 1. Applied: JSON round-trip preserves every field -----------------
     {
@@ -229,10 +230,10 @@ int main() {
                           log::ModifierBudgetRejected{7, 5, "over budget"}};
         log::LogEntry e2 = build_applied_entry(world, 2);
 
-        log::append_to_file(path, e1);
-        log::append_to_file(path, e2);
+        assert(log::append_to_file(path, e1).has_value());
+        assert(log::append_to_file(path, e2).has_value());
 
-        auto entries = log::read_log(path);
+        auto entries = log::read_log(path).value();
         check(entries.size() == 2, "append_to_file/read_log: two appended entries -> two entries read back");
         check(entries[0].turn_number == 1 && entries[1].turn_number == 2,
               "append_to_file/read_log: order preserved");
@@ -243,9 +244,9 @@ int main() {
 
         // Append a third and confirm the first two survive untouched --
         // proves this is append, not rewrite.
-        log::append_to_file(path, log::LogEntry{3, examples::burn_the_door(),
-                                                  log::ModifierBudgetRejected{6, 5, "still over"}});
-        auto entries2 = log::read_log(path);
+        assert(log::append_to_file(path, log::LogEntry{3, examples::burn_the_door(),
+                                                        log::ModifierBudgetRejected{6, 5, "still over"}}).has_value());
+        auto entries2 = log::read_log(path).value();
         check(entries2.size() == 3 && entries2[0].turn_number == 1 && entries2[1].turn_number == 2,
               "append_to_file: appending a third entry leaves the first two intact (genuinely additive)");
 

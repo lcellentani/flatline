@@ -44,11 +44,11 @@ int main() {
     const char* kScratchLog = "test_turn_log.jsonl";
     std::remove(kScratchLog);
 
-    World room = parse_world(slurp("room_guardroom.json"));
+    World room = parse_world(slurp("room_guardroom.json")).value();
 
     // --- 1. bribe -> Applied, matches an independently-run pipeline --------
     {
-        WorkOrder wo = parse_work_order(slurp("workorder_bribe.json"));
+        WorkOrder wo = parse_work_order(slurp("workorder_bribe.json")).value();
         auto [world_after, outcome] = turn::process_turn(room, /*turn_number=*/1, wo, kScratchLog);
 
         auto* applied = std::get_if<log::Applied>(&outcome);
@@ -78,7 +78,7 @@ int main() {
 
     // --- 2. hallucinated -> GauntletRejected at the same stage/index, World unchanged ---
     {
-        WorkOrder wo = parse_work_order(slurp("workorder_hallucinated.json"));
+        WorkOrder wo = parse_work_order(slurp("workorder_hallucinated.json")).value();
         auto [world_after, outcome] = turn::process_turn(room, /*turn_number=*/2, wo, kScratchLog);
 
         auto* rejected = std::get_if<log::GauntletRejected>(&outcome);
@@ -102,19 +102,19 @@ int main() {
     // --- 3. exactly one log line appended per call, for every outcome kind ---
     {
         std::remove(kScratchLog);
-        WorkOrder bribe = parse_work_order(slurp("workorder_bribe.json"));
-        WorkOrder halluc = parse_work_order(slurp("workorder_hallucinated.json"));
+        WorkOrder bribe = parse_work_order(slurp("workorder_bribe.json")).value();
+        WorkOrder halluc = parse_work_order(slurp("workorder_hallucinated.json")).value();
 
         turn::process_turn(room, 1, bribe, kScratchLog);
-        check(log::read_log(kScratchLog).size() == 1, "log: exactly one entry after first call (Applied)");
+        check(log::read_log(kScratchLog).value().size() == 1, "log: exactly one entry after first call (Applied)");
 
         turn::process_turn(room, 2, halluc, kScratchLog);
-        check(log::read_log(kScratchLog).size() == 2, "log: exactly one MORE entry after second call (GauntletRejected)");
+        check(log::read_log(kScratchLog).value().size() == 2, "log: exactly one MORE entry after second call (GauntletRejected)");
 
         WorkOrder over_budget = bribe;
         over_budget.modifiers = {{"too_much", 100}};
         turn::process_turn(room, 3, over_budget, kScratchLog);
-        auto after_three = log::read_log(kScratchLog);
+        auto after_three = log::read_log(kScratchLog).value();
         check(after_three.size() == 3, "log: exactly one MORE entry after third call (ModifierBudgetRejected)");
         check(std::holds_alternative<log::ModifierBudgetRejected>(after_three.back().outcome),
               "log: third entry's outcome is ModifierBudgetRejected");

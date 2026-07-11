@@ -81,7 +81,7 @@ static void expect_failure(const char* name, const Result& r, Stage expected_sta
 }
 
 int main() {
-    World world = parse_world(slurp("room_guardroom.json"));
+    World world = parse_world(slurp("room_guardroom.json")).value();
 
     // --- 1. Worked examples, as-authored -----------------------------------
     expect_success("bribe_the_guard: success branch",
