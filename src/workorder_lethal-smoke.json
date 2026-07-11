@@ -1,0 +1,11 @@
+{
+  "interpretation": "Player lingers in the acrid brazier smoke, ignoring the guard's warning to step back.",
+  "ruling": "allow",
+  "modifiers": [],
+  "effects_on_success": [
+    { "type": "modify_resource", "actor": "player", "resource": "hp", "delta": -13 }
+  ],
+  "narration_on_success": "The smoke claws at your lungs -- you sway, vision swimming, but you don't move.",
+  "effects_on_failure": [],
+  "narration_on_failure": ""
+}

@@ -190,10 +190,11 @@ For manual testing, seed it by copying an existing tracked fixture (`workorder_b
 5. Type `quit`.
 
 **AC #3 — session ends after crossing `kDeathOvershoot` (-5), no further prompt:**
-1. Author `workorder_turn.json` with a `modify_resource(player, "hp", delta)` effect (uncapped, unlike `damage`'s `kDamageCap` per weapon) sized to take `player.hp` (starts at 20) to ≤ -5 net.
-2. Drive turns one at a time until the applying turn crosses the threshold.
-3. Confirm `=== SESSION OVER: player is dead ===` prints immediately after that turn, no further `=== TURN N ===` prompt, process exits 0 without blocking on stdin.
-4. Confirm `session_log.jsonl`'s final entry shows the `Alive`/`Unconscious` → `Dead` `vital_transitions`, nothing beyond it.
+1. `Copy-Item workorder_lethal-smoke.json workorder_turn.json` — an untargeted `modify_resource(player, "hp", -13)` effect (uncapped, unlike `damage`'s per-weapon cap), `modifiers: []` so it applies unconditionally with no roll variance.
+2. Run `./woz_loop`; press Enter to apply turn 1: `player.hp` 20 → 7 (`Alive`).
+3. Without editing `workorder_turn.json` (same content is reused as-is), press Enter again to apply turn 2: raw hp total 7 − 13 = −6, crossing `kDeathOvershoot` (-5).
+4. Confirm `=== SESSION OVER: player is dead ===` prints immediately after that turn, no further `=== TURN N ===` prompt, process exits 0 without blocking on stdin.
+5. Confirm `session_log.jsonl`'s final entry shows the `Alive` → `Dead` `vital_transitions`, nothing beyond it.
 
 **AC #4 — `quit` ends immediately without reading `workorder_turn.json`:**
 1. Fresh run; delete any stale `workorder_turn.json` first.
@@ -216,3 +217,9 @@ For manual testing, seed it by copying an existing tracked fixture (`workorder_b
 
 1. `cmake --build build --preset default` — `woz_loop` builds cleanly alongside the five existing targets, which must show unchanged pass counts (`test_gauntlet` 22/22, `test_log` 37/37, `test_applier` 31/31, `test_roll` 20/20, `test_turn` 18/18, `woz` exit 0).
 2. Run the four AC walkthroughs in §5 against the built `woz_loop` binary.
+
+**Verified (2026-07-11):** Both steps completed against the built `woz_loop` binary (`src/woz_loop.cpp`, already implemented per this plan). Step 1: all five pre-existing suites re-ran at the exact documented counts, `woz` exit 0. Step 2, all four ACs confirmed:
+- **AC #1:** `workorder_bribe.json` staged as `workorder_turn.json`, one Enter-press → applied turn byte-for-byte matching `woz`'s own trace (die 1, modifiers 5, total 6, FAILURE, same narration, `player.gold: 15 -> 15`, inventory size unchanged); `session_log.jsonl` has exactly one line, `turn_number: 1`, `Applied`-shaped.
+- **AC #2:** continuous session, `workorder_turn.json` swapped mid-run between two Enter-presses (bribe fails, then a follow-up "ask again" WorkOrder succeeds and transfers `key_north`) → two log entries (`turn_number` 1, 2); `entry[1].world_before` is structurally identical (deep-equal) to `entry[0].world_after`.
+- **AC #3:** `workorder_lethal-smoke.json` (§ below and `src/workorder_lethal-smoke.json`) staged and resubmitted unchanged for two turns → `player.hp` 20→7 (Alive) then raw total 7−13=−6 (≤ `kDeathOvershoot` −5); `=== SESSION OVER: player is dead ===` printed immediately after turn 2 with no further `=== TURN N ===` prompt, process exit 0; final `session_log.jsonl` entry's `vital_transitions` records `alive → dead`, overkill −6.
+- **AC #4:** fresh run, no `workorder_turn.json` present, `quit` typed at the first prompt → exit 0, no parse error, `session_log.jsonl` never created (confirms `quit` short-circuits before the file read).

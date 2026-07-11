@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/gm-adjudicator.md` |
 | **Date** | 2026-07-04 |
-| **Status** | In Progress (2/4 phases done) |
+| **Status** | In Progress (3/4 phases done) |
 | **Effort** | 3–4 sessions (Phase 0 is a short but necessary bootstrap; Phases 1–2 are one light session; Phase 3's SDL3/ImGui build-out is the bulk) |
 
 ---
@@ -150,14 +150,16 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 
 ---
 
-### Phase 2: Headless CLI Multi-Turn Loop — Not Started
+### Phase 2: Headless CLI Multi-Turn Loop — Done
 
 **Objective:** A real, scriptable multi-turn session: persistent `World` across turns, engine-tracked turn numbers, live file-based WorkOrder authoring, ending on player death or an explicit quit.
 
-#### Task 2.1: New CLI loop
+#### Task 2.1: New CLI loop — Done
 
 **New File:** `woz_loop.cpp`
 **Tag:** T2 — the file-based-authoring/quit-sentinel control flow follows directly from what was discussed; the body is mechanical reuse of `process_turn`, but a fresh entry point still warrants a quick pass.
+
+**Verified (2026-07-11):** Exec plan `docs/exec/phase-2-woz-loop.md` executed against the built `woz_loop` binary; all four ACs confirmed (see that doc's §5 for the full walkthrough and its verification note). Summary: AC #1 — one applied turn from `workorder_bribe.json`, byte-for-byte matching `woz`'s own trace (die 1, FAILURE, same narration/gold/inventory), logged as `turn_number == 1`. AC #2 — a continuous two-turn session (bribe fails, then a follow-up key request succeeds) produces two log entries where `entry[1].world_before` is structurally identical to `entry[0].world_after`. AC #3 — the new `src/workorder_lethal-smoke.json` fixture drives `player.hp` 20→7→(raw)−6 across two turns, crossing `kDeathOvershoot`; `=== SESSION OVER: player is dead ===` prints immediately with no further turn prompt, exit 0, and the final log entry's `vital_transitions` shows `alive → dead` (overkill −6). AC #4 — with no `workorder_turn.json` staged, typing `quit` at turn 1 exits 0 immediately with no parse error and no `session_log.jsonl` created, proving the quit sentinel short-circuits before the file read. All five pre-existing suites re-ran at unchanged counts (`test_gauntlet` 22/22, `test_log` 37/37, `test_applier` 31/31, `test_roll` 20/20, `test_turn` 18/18, `woz` exit 0).
 
 **Changes:**
 - Load a room once from `argv[1]` (default `room_guardroom.json`) into a persistent `World world`.
@@ -268,7 +270,7 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 ## 4. Validation Checklist
 
 ### Functional
-- [ ] A 3+ turn session via `woz_loop` threads world state correctly turn to turn.
+- [x] A 3+ turn session via `woz_loop` threads world state correctly turn to turn — confirmed 2026-07-11 (Task 2.1, AC #2/#3).
 - [ ] A 3+ turn session via `woz_gui`, given the same WorkOrders, produces mechanically identical outcomes to `woz_loop`.
 - [ ] Quit sentinel (CLI) / window close (GUI) ends the session cleanly at any point.
 - [ ] Session ends automatically, on both front ends, when `player.vital` reaches `Dead`.
