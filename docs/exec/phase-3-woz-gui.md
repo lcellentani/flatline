@@ -320,7 +320,7 @@ Unlike `woz_loop`, this is a windowed app — these steps are meant to be run by
 | `src/woz_gui.cpp` | **New** — SDL3 + OpenGL3 + Dear ImGui desktop tool: shell (3.3) + 3 docked panels (list+detail Log) + turn submission (3.4) |
 | `.gitignore` | Adds `gui_session_log.jsonl`, `imgui.ini` |
 
-`build/bin/workorders/` (the WorkOrder panel's **Saved** group source) is not a repo path — it lives inside the already-`.gitignore`d `build/` tree, seeded manually per §7's walkthrough. No tracked file, no CMake change.
+`build/bin/workorders/` (the WorkOrder panel's **Saved** group source) is not a repo path — it lives inside the already-`.gitignore`d `build/` tree. As of the `FLATLINE_WORKORDER_FIXTURES` addition to `CMakeLists.txt`, it's populated automatically on every `woz_gui` build (filtered from `FLATLINE_JSON_FIXTURES` by a `workorder_` filename prefix) rather than seeded by hand.
 
 ---
 

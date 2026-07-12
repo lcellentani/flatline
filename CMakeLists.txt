@@ -18,8 +18,18 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(FLATLINE_JSON_FIXTURES
     ${CMAKE_SOURCE_DIR}/res/room_guardroom.json
     ${CMAKE_SOURCE_DIR}/res/workorder_bribe.json
+    ${CMAKE_SOURCE_DIR}/res/workorder_burn-door.json
     ${CMAKE_SOURCE_DIR}/res/workorder_hallucinated.json
+    ${CMAKE_SOURCE_DIR}/res/workorder_lethal-smoke.json
+    ${CMAKE_SOURCE_DIR}/res/workorder_open-door.json
+    ${CMAKE_SOURCE_DIR}/res/workorder_push-guard.json
 )
+
+# Subset feeding woz_gui's workorders/ folder (its WorkOrder panel's Saved group) --
+# derived from the list above so a new res/workorder_*.json fixture only needs adding
+# in one place to reach both the flat copy and the GUI's Saved picker.
+set(FLATLINE_WORKORDER_FIXTURES ${FLATLINE_JSON_FIXTURES})
+list(FILTER FLATLINE_WORKORDER_FIXTURES INCLUDE REGEX "/workorder_")
 
 function(flatline_add_executable name)
     add_executable(${name} ${ARGN})
@@ -64,3 +74,11 @@ target_link_libraries(imgui PUBLIC SDL3::SDL3 OpenGL::GL)
 
 flatline_add_executable(woz_gui src/woz_gui.cpp)
 target_link_libraries(woz_gui PRIVATE imgui)
+
+# woz_gui reads workorders/*.json (relative to its CWD) at startup for the WorkOrder
+# panel's Saved group -- see src/woz_gui.cpp's fs::directory_iterator("workorders").
+add_custom_command(TARGET woz_gui POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:woz_gui>/workorders
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FLATLINE_WORKORDER_FIXTURES}
+            $<TARGET_FILE_DIR:woz_gui>/workorders
+)
