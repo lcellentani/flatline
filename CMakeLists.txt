@@ -4,6 +4,15 @@ project(flatline CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Neither is on by default for this Clang-on-Windows toolchain: without -g, object
+# files carry no line tables; without /DEBUG, lld-link won't (re)generate a PDB on
+# relink even when one is requested via /pdb:, silently leaving a stale PDB in place
+# from whenever one last happened to exist. Both are needed for breakpoints to bind.
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options(-g)
+    add_link_options(-Xlinker /DEBUG)
+endif()
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 set(FLATLINE_JSON_FIXTURES
