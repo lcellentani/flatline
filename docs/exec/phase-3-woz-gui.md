@@ -259,6 +259,10 @@ Once `session_over` is true: a banner ("SESSION OVER: player is dead") rendered 
 - Clicking **Load into editor** copies the current preview into `wo_text`, replacing its prior contents, and clears any stale `parse_error`.
 - A staged sequence of WorkOrders driving the player to `Dead` shows the session-over banner and disables Submit, without closing the window.
 
+**Verified (2026-07-12):** Implemented in commit `ed388ba`. Ludo ran this section's own §7 walkthrough by hand against the built `woz_gui.exe` and confirmed every AC above holds against the real prototype. Independently cross-checked: a full clean rebuild (`rm -rf build && cmake --preset default && cmake --build build`) reproduces unchanged pass counts (`test_gauntlet` 22/22, `test_log` 37/37, `test_applier` 31/31, `test_roll` 20/20, `test_turn` 18/18, `woz` exit 0); `woz_gui.exe` launches and idles with zero console output (no crash, no ImGui/SDL warnings); and running `woz_loop` against `workorder_bribe.json` — the same `process_turn(world, turn_number, wo, log_path)` call the GUI's Submit handler makes — reproduces the exact reference trace (die 1, FAILURE, `player.gold` unchanged at 15, `guard_01` disposition neutral→unfriendly), confirming the GUI-vs-`woz_loop` parity AC structurally rather than only by eye.
+
+One implementation detail worth flagging against §4.1's pseudocode: `ImGui::InputTextMultiline` needs a raw mutable buffer, and `imgui_stdlib.h` (the header that would let it bind directly to a `std::string`) isn't in Task 3.1's vendored file list. The shipped code works around this with a fixed `char wo_text_buf[16384]` mirrored to/from `wo_text` once per frame (see `src/woz_gui.cpp`'s comment above `kWorkOrderBufSize`) — functionally equivalent to the doc's snippet, just not textually identical to it.
+
 ---
 
 ## 5. Session log file
@@ -329,4 +333,4 @@ Unlike `woz_loop`, this is a windowed app — these steps are meant to be run by
 1. `cmake --build build --preset default` — `woz_gui` builds cleanly alongside the six existing targets, which must show unchanged pass counts (`test_gauntlet` 22/22, `test_log` 37/37, `test_applier` 31/31, `test_roll` 20/20, `test_turn` 18/18, `woz` exit 0).
 2. Run the §7 walkthroughs against the built `woz_gui` binary; record results here the same way `docs/exec/phase-2-woz-loop.md` records its own post-implementation verification.
 
-**Progress (2026-07-11):** Tasks 3.1, 3.2, and 3.3 are implemented and verified (see their own **Verified** notes above) — vendoring is in place, `CMakeLists.txt` is wired, and `src/woz_gui.cpp` now has the real SDL3+OpenGL3+ImGui shell (docking-enabled, empty per-frame body) in place of Task 3.2's link-proof placeholder. Task 3.4 (three-panel layout, WorkOrder list/preview/load, turn submission) is **not started** — §7's Task 3.4 walkthrough steps don't apply yet.
+**Progress (2026-07-12):** All four tasks are implemented and verified (see their own **Verified** notes above). Tasks 3.1–3.3 landed first (vendoring, `CMakeLists.txt` wiring, the SDL3+OpenGL3+ImGui shell); Task 3.4 (three-panel layout, WorkOrder list/preview/load, turn submission) landed in commit `ed388ba` and was confirmed against the real prototype via this doc's own §7 walkthrough. Phase 3, and the plan as a whole (`docs/plans/gm-multiturn-loop.md`), are now Done.

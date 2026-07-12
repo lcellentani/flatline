@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/gm-adjudicator.md` |
 | **Date** | 2026-07-04 |
-| **Status** | In Progress (3/4 phases done) |
+| **Status** | Done (4/4 phases done) |
 | **Effort** | 3–4 sessions (Phase 0 is a short but necessary bootstrap; Phases 1–2 are one light session; Phase 3's SDL3/ImGui build-out is the bulk) |
 
 ---
@@ -185,7 +185,7 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 
 ---
 
-### Phase 3: SDL3 + OpenGL3 + Dear ImGui Desktop Tool — In Progress
+### Phase 3: SDL3 + OpenGL3 + Dear ImGui Desktop Tool — Done
 
 **Objective:** A live, three-panel Experiment-1 session tool built on the same shared pipeline, for the actual "is it fun" playtests.
 
@@ -224,10 +224,12 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 - `woz_gui` links successfully against SDL3 and OpenGL.
 - The five pre-existing targets are unaffected — same pass counts as Phase 0 left them.
 
-#### Task 3.3: SDL3/OpenGL3/ImGui application shell
+#### Task 3.3: SDL3/OpenGL3/ImGui application shell — Done
 
 **New File:** `woz_gui.cpp` (shell only — window, context, main loop)
 **Tag:** T4 — boilerplate lifted almost verbatim from Dear ImGui's own official SDL3+OpenGL3 example; no project-specific decision in window/context setup.
+
+**Verified (2026-07-11):** see `docs/exec/phase-3-woz-gui.md`'s own Task 3.3 Verified note — init order, main loop, and shutdown order all match the exec plan exactly (`DockingEnable`, no `ViewportsEnable`, `glsl_version = "#version 130"`); builds clean, no console output on init or shutdown. Two gaps found on first review (missing `DockingEnable`, leftover stock ImGui demo content in the frame body) were fixed before this was marked Done.
 
 **Changes:**
 - Window creation, ImGui context init/shutdown, event pump, frame render/present — no game logic yet.
@@ -236,10 +238,12 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 - Running `woz_gui` opens a window and renders an empty ImGui frame without crashing, closing cleanly on window-close.
 - No ImGui/SDL3 console warnings (unmatched `Begin`/`End`, double context init, etc.).
 
-#### Task 3.4: Three-panel layout and turn submission
+#### Task 3.4: Three-panel layout and turn submission — Done
 
 **File:** `woz_gui.cpp` (extends Task 3.3's shell)
 **Tag:** T2 — panel layout and interaction flow (what each panel owns, when Submit is enabled) are real UI decisions worth a quick pass; wiring into `process_turn`/`dump`/`log::Outcome` is mechanical reuse of already-proven code.
+
+**Verified (2026-07-12):** Implemented in commit `ed388ba`. Ludo ran `docs/exec/phase-3-woz-gui.md` §7's full manual walkthrough against the built `woz_gui.exe` and confirmed the prototype matches every AC below (three docked panels, Saved/This-Session groups, non-destructive preview + explicit Load-into-editor, malformed-JSON handled inline without touching `World`/`turn_number`/the log, a staged death sequence showing the session-over banner with Submit disabled). Cross-checked independently: a full clean rebuild reproduces unchanged pass counts (`test_gauntlet` 22/22, `test_log` 37/37, `test_applier` 31/31, `test_roll` 20/20, `test_turn` 18/18, `woz` exit 0); `woz_gui.exe` launches and runs with zero console output (no crash, no ImGui/SDL warnings) and terminates cleanly; `woz_loop` run against `workorder_bribe.json` (the same `process_turn` call the GUI's Submit handler uses) reproduces the exact reference trace — die 1, FAILURE, `player.gold` unchanged, `guard_01` disposition neutral→unfriendly — confirming GUI/CLI parity structurally rather than just visually.
 
 **Changes:**
 - **Room Description panel** — read-only scrollable text rendering `dump(world)`, the same function already used by the demo and the CLI loop.
@@ -281,15 +285,15 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 
 ### Functional
 - [x] A 3+ turn session via `woz_loop` threads world state correctly turn to turn — confirmed 2026-07-11 (Task 2.1, AC #2/#3).
-- [ ] A 3+ turn session via `woz_gui`, given the same WorkOrders, produces mechanically identical outcomes to `woz_loop`.
-- [ ] Quit sentinel (CLI) / window close (GUI) ends the session cleanly at any point.
-- [ ] Session ends automatically, on both front ends, when `player.vital` reaches `Dead`.
+- [x] A 3+ turn session via `woz_gui`, given the same WorkOrders, produces mechanically identical outcomes to `woz_loop` — confirmed 2026-07-12 (Task 3.4 manual walkthrough, plus independent `woz_loop` reference-trace cross-check since both front ends call the identical `process_turn`).
+- [x] Quit sentinel (CLI) / window close (GUI) ends the session cleanly at any point — CLI confirmed 2026-07-11 (Task 2.1 AC #4); GUI window-close confirmed 2026-07-11 (Task 3.3 Verified note) and re-confirmed 2026-07-12 (Task 3.4 manual walkthrough).
+- [x] Session ends automatically, on both front ends, when `player.vital` reaches `Dead` — CLI confirmed 2026-07-11 (Task 2.1 AC #3); GUI confirmed 2026-07-12 (Task 3.4 manual walkthrough, staged death sequence).
 
 ### Integration
 - [x] `wizard_of_oz_demo.cpp`'s output is byte-identical before/after the Phase 1 refactor — confirmed 2026-07-07.
-- [ ] Clang/Ninja-built test binaries produce identical pass counts to the current manual `g++` builds.
+- [x] Clang/Ninja-built test binaries produce identical pass counts to the current manual `g++` builds — confirmed 2026-07-06 (Task 0.3), re-confirmed on every subsequent phase including 2026-07-12's full clean rebuild.
 - [ ] clangd gives live diagnostics on `gm_*.hpp` in both VS Code and Zed once `compile_commands.json` exists.
-- [ ] Malformed WorkOrder JSON in the GUI panel fails gracefully — no crash, no `World` mutation.
+- [x] Malformed WorkOrder JSON in the GUI panel fails gracefully — no crash, no `World` mutation — confirmed 2026-07-12 (Task 3.4 manual walkthrough, step 7).
 
 ### Regression
 - [x] All four existing test suites unmodified and still passing (22/22, 37/37, 31/31, 20/20) — confirmed 2026-07-06 under Phase 0's Clang/Ninja build; re-confirmed 2026-07-07 after the Phase 1 refactor, plus new `test_turn` 18/18.
