@@ -1,9 +1,9 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
+#include <exception>
 #include <fstream>
 #include <iostream>
-#include <utility>
 
 #include "gm_effects.hpp"
 #include "gm_json.hpp"
@@ -67,12 +67,13 @@ int main(int argc, char* argv[]) {
 
     const char* room_path = (argc > 1) ? argv[1] : "room_guardroom.json";
 
-    auto world_result = parse_world(slurp(room_path));
-    if (!world_result) {
-        std::cerr << "fatal: failed to load room '" << room_path << "': " << world_result.error() << "\n";
+    World world;
+    try {
+        world = parse_world(slurp(room_path));
+    } catch (const std::exception& ex) {
+        std::cerr << "fatal: failed to load room '" << room_path << "': " << ex.what() << "\n";
         return 1;
     }
-    World world = std::move(world_result.value());
 
     int64_t turn_number = 1;
 
@@ -104,20 +105,21 @@ int main(int argc, char* argv[]) {
             break;
         }
 
-        std::string raw = slurp(kWorkOrderPath);
-        if (raw.empty()) {
-            std::cout << "\n"
-                      << kWorkOrderPath
-                      << " is missing or empty -- write a WorkOrder and press Enter again.\n\n";
-            continue;
-        }
-        auto wo_result = parse_work_order(raw);
-        if (!wo_result) {
-            std::cout << "\ncould not parse " << kWorkOrderPath << ": " << wo_result.error()
+        WorkOrder wo;
+        try {
+            std::string raw = slurp(kWorkOrderPath);
+            if (raw.empty()) {
+                std::cout << "\n"
+                          << kWorkOrderPath
+                          << " is missing or empty -- write a WorkOrder and press Enter again.\n\n";
+                continue;
+            }
+            wo = parse_work_order(raw);
+        } catch (const std::exception& ex) {
+            std::cout << "\ncould not parse " << kWorkOrderPath << ": " << ex.what()
                       << "\n(turn_number unchanged -- fix the file and press Enter again)\n\n";
             continue;
         }
-        WorkOrder wo = std::move(wo_result.value());
 
         auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, kLogPath);
         print_outcome(wo, world, world_after, outcome);

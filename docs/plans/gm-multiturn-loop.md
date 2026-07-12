@@ -58,7 +58,7 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 
 **Changes:**
 - `git init` at the repo root.
-- Keep the existing flat file layout (`gm_*.hpp`, `test_*.cpp`, `wizard_of_oz_demo.cpp`, `room_guardroom.json`, `workorder_*.json`) exactly as drafted — no speculative `src/` restructuring. **Superseded 2026-07-11 (Phase 3, Task 3.3 session):** JSON fixtures were later moved to a sibling `res/` directory (commit `35a29d8`) — they're data, not source, so `src/` now holds only `gm_*.hpp`/`test_*.cpp`/`wizard_of_oz_demo.cpp`/`woz_loop.cpp`/`woz_gui.cpp`/`app.ixx`/`app.cpp`/`expected.hpp`. Recorded here rather than rewritten, since this bullet captured the original Task 0.1 decision and rationale at the time it was made.
+- Keep the existing flat file layout (`gm_*.hpp`, `test_*.cpp`, `wizard_of_oz_demo.cpp`, `room_guardroom.json`, `workorder_*.json`) exactly as drafted — no speculative `src/` restructuring.
 - Add a `third_party/` directory for vendored dependencies — first user is `nlohmann/json` (Task 0.2), later joined by Dear ImGui (Phase 3, Task 3.1).
 - `.gitignore` excludes build output directories and generated log files (`woz_log.jsonl`, `session_log.jsonl`) — those are run artifacts, not source.
 - Connect a GitHub remote by running `gh repo create` with **no name argument** — its own interactive wizard prompts for the repository name, visibility, and description, then offers to push the existing local commit as the initial state. This is deliberate, not an oversight: the project's name isn't locked yet, so the plan prompts for it at setup time instead of this document hardcoding a guess. Fallback if `gh` isn't authenticated on the machine: create an empty repo by hand on GitHub (no README/license/`.gitignore` — those would create a conflicting root commit), then `git remote add origin <url>`, `git branch -M main`, `git push -u origin main`.
@@ -224,13 +224,10 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 - `woz_gui` links successfully against SDL3 and OpenGL.
 - The five pre-existing targets are unaffected — same pass counts as Phase 0 left them.
 
-#### Task 3.3: SDL3/OpenGL3/ImGui application shell — Done
+#### Task 3.3: SDL3/OpenGL3/ImGui application shell
 
 **New File:** `woz_gui.cpp` (shell only — window, context, main loop)
 **Tag:** T4 — boilerplate lifted almost verbatim from Dear ImGui's own official SDL3+OpenGL3 example; no project-specific decision in window/context setup.
-**Actual:** T3 — the shell itself matched plan (boilerplate lifted from ImGui's example), but implementation also introduced the project's first C++20 module (`engine.app`) and a project-wide exceptions ban with a new `Expected<T,E>` type, neither scoped by this task. See note below and the gaps flagged back to Ludo.
-
-**Verified (2026-07-12):** `cmake --build build --preset default` succeeds clean; `woz_gui.exe` builds and links. All five pre-existing suites re-ran at unchanged counts (`test_gauntlet` 22/22, `test_log` 37/37, `test_applier` 31/31, `test_roll` 20/20, `test_turn` 18/18); `woz` exits 0. Shipped shape differs from this task's own "New File"/"Changes" text above: the shell is not a single free-function `woz_gui.cpp` but a C++20 module split (`src/app.ixx` + `src/app.cpp`, module `engine.app`, exporting a factory-constructed `App` class) with `woz_gui.cpp` reduced to a thin `main()`. That split, plus a project-wide exceptions ban (`src/expected.hpp`, engine-wide migration) and a `src/` → `res/` fixture move, are real deviations from both this doc and the Phase 3 exec plan — flagged to Ludo rather than silently reconciled here, since they touch Files to Modify, Task 0.1's locked layout text, and Task 3.4's exec-plan draft, none of which this update is scoped to rewrite.
 
 **Changes:**
 - Window creation, ImGui context init/shutdown, event pump, frame render/present — no game logic yet.
@@ -276,13 +273,7 @@ After this ships, the single-room guardroom scenario (`gm-adjudicator.md` §2's 
 | `wizard_of_oz_demo.cpp` | Refactor steps 4–6c to call `gm_turn::process_turn`; steps 1–3, 7–9 untouched | -60/+15 | Low |
 | `woz_loop.cpp` | **New** — headless multi-turn CLI loop, file-based authoring, scriptable for regression runs | ~90 | Medium |
 | `third_party/imgui/**` | **New** — vendored Dear ImGui + SDL3 backend + OpenGL3 backend, unmodified upstream | N/A (vendored) | Low |
-| `woz_gui.cpp` | **New** — thin `main()`: `import engine.app;`, `App::create()`/`.run()`. Panels (list+detail Log) + turn submission (Task 3.4) render inside `App::run`'s frame callback | ~15 | Medium |
-| `src/app.ixx` | **New** (Phase 3, Task 3.3) — `engine.app` module interface: `App` class owning the SDL3/OpenGL3/ImGui window+context lifecycle and main loop, factory-constructed via `Expected<App, std::string>` | ~55 | Low |
-| `src/app.cpp` | **New** (Phase 3, Task 3.3) — `engine.app` module implementation (window/context init, event pump, frame render/present, shutdown) | ~135 | Low |
-| `src/expected.hpp` | **New** (Phase 3, Task 3.3) — dependency-free `Expected<T,E>`; introduced for `App::create()` and then adopted project-wide as the return-value alternative once exceptions were banned (see `.claude/rules/coding_style.md`) | ~60 | Low |
-| `gm_json.hpp`, `gm_log.hpp` | Migrated off exceptions to return `Expected<T,E>` (`parse_work_order`/`parse_world`/`read_log`); call sites updated in `gm_turn.hpp`, `wizard_of_oz_demo.cpp`, `woz_loop.cpp`, and all four `test_*.cpp` suites | ~110 total | Low |
-| `res/*.json` | **Moved** from `src/` (Phase 3, Task 3.3 session, commit `35a29d8`) — room/WorkOrder fixtures are data, not source; only `CMakeLists.txt`'s fixture paths changed | N/A (moved) | Low |
-| `.claude/rules/coding_style.md` | Documents the exceptions ban, `Expected<T,E>` convention, the "constructors that can fail" static-factory pattern, and module file-naming (`snake_case.ixx`/`.cpp`) | ~45 | Low |
+| `woz_gui.cpp` | **New** — SDL3 + OpenGL3 + Dear ImGui desktop tool: 3 panels (list+detail Log) + turn submission | ~300 | Medium |
 
 ---
 

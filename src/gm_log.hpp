@@ -5,7 +5,6 @@
 #include "gm_json.hpp"
 #include "gm_roll.hpp"
 #include "gm_state.hpp"
-#include "expected.hpp"
 #include <fstream>
 #include <optional>
 #include <sstream>
@@ -265,33 +264,23 @@ inline void from_json(const json& j, LogEntry& e) {
 // gauntlet's internal stages never get their own line, only the turn's
 // final outcome does. Append, not rewrite — matches the spec's own verb
 // and survives a crash mid-session with every prior line intact.
-//
-// No C++ exceptions cross these two functions' public API (see
-// coding_style.md) — a failed open returns Expected::err directly, and
-// read_log's json::parse/.get<T>() (which can throw, same reasoning as
-// gm_json.hpp's own header comment) is caught right here and converted.
 // ---------------------------------------------------------------------
-inline Expected<std::monostate, std::string> append_to_file(const std::string& path, const LogEntry& entry) {
+inline void append_to_file(const std::string& path, const LogEntry& entry) {
     std::ofstream f(path, std::ios::app);
-    if (!f) return Expected<std::monostate, std::string>::err("gm::log::append_to_file: could not open '" + path + "'");
+    if (!f) throw std::runtime_error("gm::log::append_to_file: could not open '" + path + "'");
     f << json(entry).dump() << "\n";
-    return Expected<std::monostate, std::string>::ok();
 }
 
-inline Expected<std::vector<LogEntry>, std::string> read_log(const std::string& path) {
+inline std::vector<LogEntry> read_log(const std::string& path) {
     std::ifstream f(path);
-    if (!f) return Expected<std::vector<LogEntry>, std::string>::err("gm::log::read_log: could not open '" + path + "'");
+    if (!f) throw std::runtime_error("gm::log::read_log: could not open '" + path + "'");
     std::vector<LogEntry> entries;
     std::string line;
-    try {
-        while (std::getline(f, line)) {
-            if (line.empty()) continue;
-            entries.push_back(json::parse(line).get<LogEntry>());
-        }
-    } catch (const std::exception& ex) {
-        return Expected<std::vector<LogEntry>, std::string>::err(ex.what());
+    while (std::getline(f, line)) {
+        if (line.empty()) continue;
+        entries.push_back(json::parse(line).get<LogEntry>());
     }
-    return Expected<std::vector<LogEntry>, std::string>::ok(std::move(entries));
+    return entries;
 }
 
 // ---------------------------------------------------------------------

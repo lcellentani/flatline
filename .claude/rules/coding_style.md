@@ -26,7 +26,6 @@ Follow the [Google C++ Style Guide](https://google.github.io/styleguide/cppguide
 |---|---|---|
 | Indentation | 2 spaces | 4 spaces |
 | Pointer alignment | either side | type side (`void* p`) |
-| Enumerator names | `kEnumName` | `PascalCase` |
 
 Everything else follows Google style as written.
 
@@ -60,18 +59,26 @@ float elapsed_seconds = 0.016f;
 ```
 
 ### Member variables
-Member variables use `snake_case` with a trailing underscore — see Class layout below for an example.
-
-### Constants and enumerators
-Compile-time constants (`constexpr`/`const`, fixed for the program's duration) use a leading `k` + `MixedCase` — Google's actual Constant Names rule; `UPPER_SNAKE_CASE` is reserved for macros. Enum values use `PascalCase`.
+Member variables use `snake_case` with a trailing underscore.
 
 ```cpp
-export constexpr int kMaxWidgets = 256;
-export constexpr int kDefaultWidth = 800;
-export constexpr int kFrameBudgetMs = 16;
+class Widget {
+private:
+    Backend*    backend_     = nullptr;
+    EventQueue* event_queue_ = nullptr;
+};
+```
+
+### Constants and enumerators
+Compile-time constants use `UPPER_SNAKE_CASE`. Enum values use `PascalCase`.
+
+```cpp
+export constexpr int MAX_WIDGETS     = 256;
+export constexpr int DEFAULT_WIDTH   = 800;
+export constexpr int FRAME_BUDGET_MS = 16;
 
 enum class Status : uint8_t {
-    Idle = 0,
+    Idle   = 0,
     Active = 1,
     Closed = 2,
 };
@@ -211,7 +218,7 @@ public:
     ~Application() = default;
 
     // 2. deleted copy/move (if non-copyable)
-    Application(const Application&) = delete;
+    Application(const Application&)            = delete;
     Application& operator=(const Application&) = delete;
 
     // 3. public methods
@@ -226,10 +233,10 @@ private:
     void render_background(Context& ctx);
     void render_foreground(Context& ctx);
 
-    // 6. member variables — one per line
+    // 6. member variables — one per line, aligned trailing underscores
     WidgetTree tree_;
-    Input input_;
-    bool running_ = true;
+    Input      input_;
+    bool       running_ = true;
 };
 ```
 
@@ -264,50 +271,6 @@ Use `// TODO(phaseN):` to flag work deferred to a later phase.
 widget.update_placeholder();
 ```
 
-# Error Handling
-
-This project does not use C++ exceptions. This overrides the `cpp-coding-standards` skill's E.* rules (E.2: "throw an exception to signal that a function can't perform its assigned task") — that guidance is the skill's general-purpose default; Flatline uses `Expected<T, E>` everywhere it would call for a `throw`.
-
-## `Expected<T, E>` (`src/expected.hpp`)
-
-A minimal, dependency-free stand-in for `std::expected<T, E>` — this project targets C++20, and `std::expected` is C++23. A plain header, not a module: it's used from both module code (`engine.app`) and the plain-header legacy engine (`gm_*.hpp`), so every consumer just `#include "expected.hpp"`. Construct via the `ok(...)`/`err(...)` static factories, which forward their arguments to construct `T`/`E` in place (neither type needs to be movable or copyable). Check before reading:
-
-```cpp
-Expected<Config, std::string> load_config(const std::string& path);
-
-auto result = load_config(path);
-if (!result) {
-    log_error(result.error());
-    return;
-}
-use(result.value());
-```
-
-- `value()`/`error()` `assert()` their precondition (`has_value()` / `!has_value()`) instead of throwing — reading the wrong side of an `Expected` is a caller bug, not a recoverable runtime error, so it's a contract violation (P.5: prefer compile-time/assert-time checking), not something to propagate.
-- Recoverable, expected-to-happen failures (malformed input, a missing file, a closed-vocabulary rejection) return `Expected<T, E>`. Reserve `assert()` for programming errors — violated preconditions, "can't happen" states.
-- Named `Expected`, not `Result`: `gm_gauntlet.hpp` already has its own domain-specific `gauntlet::Result` (a `std::variant<Effects, Failure>` alias) — this type is unrelated and generic, so it takes `std::expected`'s own name to avoid colliding with that one under a `using namespace gm;`.
-- Third-party code that only communicates failure via exceptions (nlohmann::json's `.at()`/`.get<T>()`, used throughout `gm_json.hpp`/`gm_log.hpp`) is not rewritten — `throw`/`catch` stays contained as an internal implementation detail of the one boundary function that talks to it (e.g. `parse_work_order`, `parse_world`, `gm::log::read_log`), which converts to `Expected` before returning. No exception ever crosses a public function boundary.
-
-## Constructors that can fail
-
-A throwing constructor isn't available, so a type whose construction can fail exposes a static factory instead:
-
-```cpp
-class Widget {
-public:
-    [[nodiscard]] static Expected<Widget, std::string> create(const Config& cfg);
-    ~Widget();
-    // ... deleted/defaulted copy/move as usual ...
-
-    // Public only because Expected<Widget, E> constructs Widget in place
-    // inside a std::variant, whose internals can't be granted friend
-    // access — not meant to be called directly, use Widget::create().
-    explicit Widget(/* already-valid state */);
-};
-```
-
-`create()` performs every fallible step, returning `Expected<Widget, E>::err(...)` at the first failure; only a fully-valid `Widget` is ever constructed on the success path.
-
 # Reference
 
-See skill: `cpp-coding-standards` for comprehensive C++ coding standards and guidelines, **except its Error Handling (E.*) rules** — this project doesn't use exceptions; see `Error Handling` above for the `Expected<T, E>` alternative used instead.
+See skill: `cpp-coding-standards` for comprehensive C++ coding standards and guidelines.

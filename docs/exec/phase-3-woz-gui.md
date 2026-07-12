@@ -124,8 +124,6 @@ Confirm the exact SDL3 CMake option names (`SDL_STATIC`/`SDL_SHARED`/`SDL_TEST_L
 
 **Verified (2026-07-11):** `src/woz_gui.cpp` replaces Task 3.2's link-proof placeholder with the real shell: init order, main loop, and shutdown order all match §3 exactly, including `io.ConfigFlags |= ImGuiConfigFlags_DockingEnable` (no `ViewportsEnable`) and `glsl_version = "#version 130"`. The frame body between `NewFrame()`/`Render()` is empty, per this task's own AC — Task 3.4 fills it in. `cmake --build build --preset default --target woz_gui` builds clean (no warnings); running the binary produces no console output on init or shutdown. First review pass found two gaps against this plan (missing `DockingEnable`, and leftover stock ImGui demo content in the frame body instead of an empty one) — both fixed and re-verified.
 
-**Superseded (2026-07-11, later same session):** the single-file shell described above was refactored into a C++20 module split — `src/app.ixx` (interface) + `src/app.cpp` (implementation), module `engine.app`, exporting a factory-constructed `App` class (commit `21c3cb4`) — alongside a project-wide exceptions ban and new `src/expected.hpp` (`Expected<T,E>`), neither anticipated by this exec plan. `woz_gui.cpp` is now a ~15-line `main()` that does `import engine.app;` and calls `App::create()`/`.run()`; the init/main-loop/shutdown sequence itself is unchanged from §3 above, just relocated into `App::create()` and `App::run()`/`poll_events()`/`render_frame()`. See `docs/plans/gm-multiturn-loop.md` Task 3.3's own Verified note (2026-07-12) for the reconciled record, and §4.5 below for the resulting change to the Task 3.4 Submit-handler draft.
-
 ---
 
 ## 4. Three-panel docked layout and turn submission (Task 3.4)
@@ -198,15 +196,14 @@ This keeps browsing non-destructive: clicking through five past turns to find th
 
 ### 4.5 Submit handler
 
-**Updated 2026-07-12:** rewritten from a `try`/`catch` draft to the `Expected<T,E>` pattern — `parse_work_order` no longer throws (see `docs/plans/gm-multiturn-loop.md` Task 3.3's Verified note and `.claude/rules/coding_style.md`'s Error Handling section). Mirrors `woz_loop.cpp`'s own `parse_work_order`/`if (!wo_result)` handling.
-
 ```cpp
 if (submit_clicked) {
-    auto wo_result = parse_work_order(wo_text);
-    if (!wo_result) {
-        parse_error = wo_result.error();   // turn_number/World untouched, wo_text left as-is to fix inline
+    WorkOrder wo;
+    try {
+        wo = parse_work_order(wo_text);
+    } catch (const std::exception& ex) {
+        parse_error = ex.what();   // turn_number/World untouched, wo_text left as-is to fix inline
     } else {
-        WorkOrder wo = std::move(wo_result.value());
         auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, kGuiLogPath);
 
         // Same LogEntry process_turn already built internally to append to

@@ -50,7 +50,7 @@ int main() {
     using namespace gm;
 
     // 1. Engine loads the room. (In the loop, this is authored once per scenario.)
-    World world = parse_world(slurp("room_guardroom.json")).value();
+    World world = parse_world(slurp("room_guardroom.json"));
 
     // 2. Show state to the human GM. This is the "render for the LLM" step —
     //    the same view a model would receive as prompt context.
@@ -58,7 +58,7 @@ int main() {
 
     // 3. GM reads player intent ("I bribe the guard with 20 gold") and authors
     //    a work order as JSON. [BRIDGE] parses it into typed effects.
-    WorkOrder wo = parse_work_order(slurp("workorder_bribe.json")).value();
+    WorkOrder wo = parse_work_order(slurp("workorder_bribe.json"));
 
     std::cout << "=== PARSED WORK ORDER ===\n";
     std::cout << "interpretation : " << wo.interpretation << "\n";
@@ -128,12 +128,12 @@ int main() {
 
     // 8. Closed-vocabulary gate: an invented verb is rejected AT THE BRIDGE,
     //    before it could ever reach the validator.
-    auto vocab_result = parse_work_order(R"({"interpretation":"x","ruling":"allow",
-        "effects_on_success":[{"type":"teleport","who":"player"}]})");
-    if (vocab_result) {
+    try {
+        parse_work_order(R"({"interpretation":"x","ruling":"allow",
+            "effects_on_success":[{"type":"teleport","who":"player"}]})");
         std::cout << "vocabulary gate: NOT enforced (bug)\n";
-    } else {
-        std::cout << "vocabulary gate: rejected -> " << vocab_result.error() << "\n";
+    } catch (const std::exception& ex) {
+        std::cout << "vocabulary gate: rejected -> " << ex.what() << "\n";
     }
 
     // 9. The spec's own "hallucination (deny at the gauntlet)" worked example,
@@ -141,7 +141,7 @@ int main() {
     //    (silver_key is a well-formed id, just not a real one) -> [VALIDATOR]
     //    is the stage that actually catches it, one step later than the
     //    vocabulary gate above.
-    WorkOrder hallucinated = parse_work_order(slurp("workorder_hallucinated.json")).value();
+    WorkOrder hallucinated = parse_work_order(slurp("workorder_hallucinated.json"));
     auto hallucination_result = gauntlet::run_gauntlet(world, hallucinated.effects_on_success);
     bool hallucination_caught = std::holds_alternative<gauntlet::Failure>(hallucination_result);
     std::cout << "hallucination worked example: "

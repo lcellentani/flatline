@@ -48,7 +48,7 @@ static Entity* find_entity(World& w, const char* id) {
 }
 
 int main() {
-    World world = parse_world(slurp("room_guardroom.json")).value();
+    World world = parse_world(slurp("room_guardroom.json"));
 
     // --- 1. bribe_the_guard: success branch -------------------------------
     {
