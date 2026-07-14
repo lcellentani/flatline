@@ -71,7 +71,12 @@ Touches only `src/woz_gui.cpp` (the file Task 3.4 already owns) plus a `.gitigno
 
 ## 5. Open Questions
 
-None — every question raised during drafting (the original four, the three-decision Reset/Save follow-up, and the Refresh follow-up) is resolved and folded into §4's Key Decisions above.
+Every question raised during drafting (the original four, the three-decision Reset/Save follow-up, and the Refresh follow-up) is resolved and folded into §4's Key Decisions above. `/spec-review` surfaced four further gaps not yet decided:
+
+- [ ] The WorkOrder preview-vs-editor split's editor side is an `InputTextMultiline` sized via `ImVec2(-1.0f, -60.0f)` in the current source (`woz_gui.cpp:294-295`), not a `BeginChild` like the other two ratio-driven regions. How does that `-60px` fixed reservation for the button row below it compose with a persisted, drag-resizable height — does the ratio apply to the space above the reservation, or does the reservation itself need to change shape?
+- [ ] What are the default split ratios on first launch, before `gui_layout.json` exists — equivalent to today's hardcoded 220/120/150px baselines, or something else? And if `gui_layout.json` exists but is missing or fails to parse, what's the fallback (same first-launch defaults, or something else)?
+- [ ] Should the new Reset/Save buttons be gated by the existing `session_over` `BeginDisabled` block that today wraps only "Submit Turn" (`woz_gui.cpp:298-325`) — i.e. can a GM still Save a draft or Reset the buffer after the session-over banner appears, or should both freeze along with Submit?
+- [ ] (Nice-to-have) The 120px-minimum rationale (§4) was benchmarked against the preview-box (120px) and entry-list (150px) baselines; the list-sidebar's own current default is 220px, so the same 120px floor is a proportionally much larger cut for that split. Does the list-sidebar need its own minimum value/rationale, or is sharing the 120px floor across all three splitters intentional?
 
 ---
 
