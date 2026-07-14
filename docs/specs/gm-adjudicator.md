@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Ready |
-| **Date** | 2026-07-03 |
-| **Plan** | Not yet planned |
+| **Status** | Implemented |
+| **Date** | 2026-07-12 |
+| **Plan** | `docs/plans/gm-multiturn-loop.md` |
 | **Context** | `docs/context/llm-game-master.md` |
 | **Supersedes** | N/A |
 
