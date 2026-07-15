@@ -1,24 +1,22 @@
-#include <stdio.h>
-
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
-
 #include <imgui.h>
-#include <imgui_impl_sdl3.h>
 #include <imgui_impl_opengl3.h>
+#include <imgui_impl_sdl3.h>
 #include <imgui_internal.h>
-
-#include "gm_effects.hpp"
-#include "gm_json.hpp"
-#include "gm_log.hpp"
-#include "gm_rules.hpp"
-#include "gm_turn.hpp"
+#include <stdio.h>
 
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <string_view>
+
+#include "gm_effects.hpp"
+#include "gm_json.hpp"
+#include "gm_log.hpp"
+#include "gm_rules.hpp"
+#include "gm_turn.hpp"
 
 constexpr const char* kBlankWorkOrderSkeleton = R"({
       "interpretation": "",
@@ -76,7 +74,7 @@ constexpr std::string_view trim(std::string_view str) noexcept {
     const auto end = std::find_if_not(str.rbegin(), str.rend(), is_whitespace).base();
     const auto offset = std::distance(str.begin(), start);
     const auto count = std::distance(start, end);
-    return { str.data() + offset, static_cast<std::size_t>(count) };
+    return {str.data() + offset, static_cast<std::size_t>(count)};
 }
 
 int main(int argc, char* argv[]) {
@@ -93,7 +91,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Setup SDL
-    // [If using SDL_MAIN_USE_CALLBACKS: all code below until the main loop starts would likely be your SDL_AppInit() function]
+    // [If using SDL_MAIN_USE_CALLBACKS: all code below until the main loop starts would likely be
+    // your SDL_AppInit() function]
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         printf("Error: SDL_Init(): %s\n", SDL_GetError());
         return 1;
@@ -112,8 +111,11 @@ int main(int argc, char* argv[]) {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
-    SDL_WindowFlags window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    SDL_Window* window = SDL_CreateWindow("Dear ImGui SDL3+OpenGL3 example", (int)(1280 * main_scale), (int)(800 * main_scale), window_flags);
+    SDL_WindowFlags window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN |
+                                   SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    SDL_Window* window =
+        SDL_CreateWindow("Dear ImGui SDL3+OpenGL3 example", (int)(1280 * main_scale),
+                         (int)(800 * main_scale), window_flags);
     if (window == nullptr) {
         printf("Error: SDL_CreateWindow(): %s\n", SDL_GetError());
         return 1;
@@ -125,25 +127,30 @@ int main(int argc, char* argv[]) {
     }
 
     SDL_GL_MakeCurrent(window, gl_context);
-    SDL_GL_SetSwapInterval(1); // Enable vsync
+    SDL_GL_SetSwapInterval(1);  // Enable vsync
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_ShowWindow(window);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
+    (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
+    // ImGui::StyleColorsLight();
 
     // Setup scaling
     ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(main_scale); // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
-    style.FontScaleDpi = main_scale; // Set initial font scale. (in docking branch: using io.ConfigDpiScaleFonts=true automatically overrides this for every window depending on the current monitor)
+    style.ScaleAllSizes(
+        main_scale);  // Bake a fixed style scale. (until we have a solution for dynamic style
+                      // scaling, changing this requires resetting Style + calling this again)
+    style.FontScaleDpi = main_scale;  // Set initial font scale. (in docking branch: using
+                                      // io.ConfigDpiScaleFonts=true automatically overrides this
+                                      // for every window depending on the current monitor)
 
     // Setup Platform/Renderer backends
     ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
@@ -190,13 +197,14 @@ int main(int argc, char* argv[]) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             ImGui_ImplSDL3_ProcessEvent(&event);
-            if (event.type == SDL_EVENT_QUIT)
-                done = true;
-            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))
+            if (event.type == SDL_EVENT_QUIT) done = true;
+            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
+                event.window.windowID == SDL_GetWindowID(window))
                 done = true;
         }
 
-        // [If using SDL_MAIN_USE_CALLBACKS: all code below would likely be your SDL_AppIterate() function]
+        // [If using SDL_MAIN_USE_CALLBACKS: all code below would likely be your SDL_AppIterate()
+        // function]
         if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) {
             SDL_Delay(10);
             continue;
@@ -377,7 +385,8 @@ int main(int argc, char* argv[]) {
         ImGui::Render();
 
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w,
+                     clear_color.z * clear_color.w, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
