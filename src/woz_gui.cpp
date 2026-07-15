@@ -14,9 +14,11 @@
 #include "gm_rules.hpp"
 #include "gm_turn.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <string_view>
 
 constexpr const char* kBlankWorkOrderSkeleton = R"({
       "interpretation": "",
@@ -60,6 +62,21 @@ static std::string entry_label(const nlohmann::json& entry) {
                                                    : entry.value("reason", std::string{});
     return "Turn " + std::to_string(entry.value("turn_number", int64_t{0})) + " — " + status +
            " — " + teaser;
+}
+
+constexpr bool is_whitespace(char ch) {
+    return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' || ch == '\v' || ch == '\f';
+}
+
+constexpr std::string_view trim(std::string_view str) noexcept {
+    const auto start = std::find_if_not(str.begin(), str.end(), is_whitespace);
+    if (start == str.end()) {
+        return {};
+    }
+    const auto end = std::find_if_not(str.rbegin(), str.rend(), is_whitespace).base();
+    const auto offset = std::distance(str.begin(), start);
+    const auto count = std::distance(start, end);
+    return { str.data() + offset, static_cast<std::size_t>(count) };
 }
 
 int main(int argc, char* argv[]) {
@@ -295,7 +312,9 @@ int main(int argc, char* argv[]) {
                                   ImVec2(-1.0f, -60.0f));
         wo_text = wo_text_buf;
 
-        ImGui::BeginDisabled(session_over);
+        const bool is_blank = trim(wo_text) == trim(kBlankWorkOrderSkeleton);
+
+        ImGui::BeginDisabled(session_over || is_blank);
         if (ImGui::Button("Submit Turn")) {
             try {
                 WorkOrder wo = parse_work_order(wo_text);
