@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/woz-gui-qol.md` |
 | **Date** | 2026-07-14 |
-| **Status** | Not Started |
+| **Status** | In Progress (1/4 phases done) |
 | **Effort** | 1 session (four phases, one file — Splitters is the largest phase) |
 
 ---
@@ -49,7 +49,7 @@ After this ships, `woz_gui` closes the four friction points found running real E
 
 ## 2. Phased Task Breakdown
 
-### Phase 1: Submit Gate — Not Started
+### Phase 1: Submit Gate — Done
 
 **Objective:** "Submit Turn" is disabled whenever the editable buffer, trimmed, exactly equals `kBlankWorkOrderSkeleton`.
 
@@ -57,6 +57,8 @@ After this ships, `woz_gui` closes the four friction points found running real E
 
 **File:** `src/woz_gui.cpp`
 **Tag:** T3 — mechanical, spec-locked comparison logic, but it changes a control path on a working, in-use file, so every line gets reviewed rather than delegated outright (same reasoning as `gm-multiturn-loop.md` Task 1.2).
+
+**Actual:** T2 — author wrote the implementation directly, with AI answering questions and reviewing the result rather than drafting it. The review caught two build-breaking issues: a stray `#include <mftransform.h>` pulling in `windows.h`'s `min`/`max` macros (broke `gm_gauntlet.hpp`'s unrelated `std::min` call), and a `string_view` constructor mismatch in the new `trim()` helper caused by checked/debug iterators on this toolchain's MSVC STL. Both were fixed by the author.
 
 **Changes:**
 - Add a small helper (or inline expression) computing `is_blank = trim(wo_text) == trim(kBlankWorkOrderSkeleton)`, evaluated once per frame at the point `wo_text` is already resynced from `wo_text_buf` (`woz_gui.cpp:296`, existing sync point).
