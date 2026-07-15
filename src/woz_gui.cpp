@@ -351,6 +351,15 @@ int main(int argc, char* argv[]) {
         }
         ImGui::EndDisabled();
 
+        ImGui::SameLine();
+
+        ImGui::BeginDisabled(is_blank);
+        if (ImGui::Button("Reset")) {
+            wo_text = kBlankWorkOrderSkeleton;
+            snprintf(wo_text_buf, sizeof(wo_text_buf), "%s", wo_text.c_str());
+        }
+        ImGui::EndDisabled();
+
         if (parse_error) {
             ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "%s", parse_error->c_str());
         }
