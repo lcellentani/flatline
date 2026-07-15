@@ -74,7 +74,7 @@ After this ships, `woz_gui` closes the four friction points found running real E
 
 ---
 
-### Phase 2: Draft Management — Reset & Save — Not Started
+### Phase 2: Draft Management — Reset & Save — In Progress
 
 **Objective:** A GM can discard an in-progress edit back to blank in one click (Reset), or promote the current buffer to a reusable `workorders/*.json` template (Save), without leaving the app.
 
