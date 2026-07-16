@@ -1,10 +1,11 @@
 #pragma once
-#include "gm_effects.hpp"
-#include "gm_json.hpp"
-#include "gm_rules.hpp"
 #include <cstdint>
 #include <random>
 #include <string>
+
+#include "gm_effects.hpp"
+#include "gm_json.hpp"
+#include "gm_rules.hpp"
 
 // GM Adjudicator — v0 seeded roll.
 // Realizes gm-adjudicator.md §5 "modifier -> roll scheme" (LOCKED this
@@ -85,10 +86,10 @@ inline uint64_t seed_for_turn(int64_t turn_number, const WorkOrder& work_order) 
 // without re-deriving it from wo.modifiers at every call site.
 // ---------------------------------------------------------------------
 struct RollResult {
-    int32_t die;            // 1..20, the raw draw
-    int32_t modifier_sum;   // signed net sum of wo.modifiers
-    int32_t total;          // die + modifier_sum
-    bool success;           // total >= kDifficultyClass
+    int32_t die;           // 1..20, the raw draw
+    int32_t modifier_sum;  // signed net sum of wo.modifiers
+    int32_t total;         // die + modifier_sum
+    bool success;          // total >= kDifficultyClass
 };
 
 // Pure primitive: same (seed, modifier_sum) in, same RollResult out,

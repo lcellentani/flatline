@@ -1,15 +1,16 @@
 #pragma once
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "gm_applier.hpp"
 #include "gm_effects.hpp"
 #include "gm_gauntlet.hpp"
 #include "gm_log.hpp"
 #include "gm_roll.hpp"
 #include "gm_state.hpp"
-#include <cstdint>
-#include <optional>
-#include <string>
-#include <utility>
-#include <vector>
 
 // GM Adjudicator — shared per-turn pipeline (Phase 1, gm-multiturn-loop.md).
 //
@@ -31,16 +32,14 @@
 
 namespace gm::turn {
 
-inline std::pair<World, log::Outcome> process_turn(const World& world,
-                                                    int64_t turn_number,
-                                                    const WorkOrder& wo,
-                                                    const std::string& log_path) {
+inline std::pair<World, log::Outcome> process_turn(const World& world, int64_t turn_number, const WorkOrder& wo,
+                                                   const std::string& log_path) {
     // [MODIFIER BUDGET] -- must run before the roll (see gm_rules.hpp's
     // kModifierBudget comment): an unbounded modifier list could otherwise
     // force the roll's outcome regardless of what the die shows.
     if (auto budget_failure = gauntlet::validate_modifiers(wo.modifiers)) {
-        log::Outcome outcome = log::ModifierBudgetRejected{
-            budget_failure->magnitude_sum, budget_failure->budget, budget_failure->reason};
+        log::Outcome outcome =
+            log::ModifierBudgetRejected{budget_failure->magnitude_sum, budget_failure->budget, budget_failure->reason};
         log::append_to_file(log_path, log::LogEntry{turn_number, wo, outcome});
         return {world, outcome};
     }
@@ -68,17 +67,16 @@ inline std::pair<World, log::Outcome> process_turn(const World& world,
     if (auto* applied = std::get_if<std::vector<Effect>>(&gauntlet_result)) {
         // [APPLY] + [LOG]
         World world_after = applier::apply(world, *applied);
-        log::Outcome outcome = log::Applied{
-            roll_info, *applied, selected_narration, world, world_after,
-            applier::vital_transitions(world, *applied)};
+        log::Outcome outcome = log::Applied{roll_info, *applied,    selected_narration,
+                                            world,     world_after, applier::vital_transitions(world, *applied)};
         log::append_to_file(log_path, log::LogEntry{turn_number, wo, outcome});
         return {world_after, outcome};
     }
 
     // [LOG] -- turn rolled (maybe) but never reached [APPLY].
     const auto& f = std::get<gauntlet::Failure>(gauntlet_result);
-    log::Outcome outcome = log::GauntletRejected{
-        roll_info, f.effect_index, gauntlet::stage_name(f.stage), f.reason, f.conflicting_with_index};
+    log::Outcome outcome = log::GauntletRejected{roll_info, f.effect_index, gauntlet::stage_name(f.stage), f.reason,
+                                                 f.conflicting_with_index};
     log::append_to_file(log_path, log::LogEntry{turn_number, wo, outcome});
     return {world, outcome};
 }

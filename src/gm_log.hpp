@@ -1,10 +1,4 @@
 #pragma once
-#include "gm_applier.hpp"
-#include "gm_effects.hpp"
-#include "gm_gauntlet.hpp"
-#include "gm_json.hpp"
-#include "gm_roll.hpp"
-#include "gm_state.hpp"
 #include <fstream>
 #include <optional>
 #include <sstream>
@@ -12,6 +6,13 @@
 #include <string>
 #include <variant>
 #include <vector>
+
+#include "gm_applier.hpp"
+#include "gm_effects.hpp"
+#include "gm_gauntlet.hpp"
+#include "gm_json.hpp"
+#include "gm_roll.hpp"
+#include "gm_state.hpp"
 
 // GM Adjudicator — v0 replay logger.
 // Closes the last seam marked in wizard_of_oz_demo.cpp since session log 3
@@ -123,7 +124,7 @@ struct ModifierBudgetRejected {
 struct GauntletRejected {
     std::optional<RollInfo> roll;
     std::size_t effect_index;
-    std::string stage;   // gauntlet::stage_name(f.stage)
+    std::string stage;  // gauntlet::stage_name(f.stage)
     std::string reason;
     // Present only when stage == "batch_conflict" (gauntlet::Failure's own
     // field, session log 11) — the earlier effect index in the same branch
@@ -150,7 +151,7 @@ using Outcome = std::variant<ModifierBudgetRejected, GauntletRejected, Applied>;
 
 struct LogEntry {
     int64_t turn_number;
-    WorkOrder work_order;   // raw — reuses gm_json.hpp's existing to_json/from_json verbatim
+    WorkOrder work_order;  // raw — reuses gm_json.hpp's existing to_json/from_json verbatim
     Outcome outcome;
 };
 
@@ -158,9 +159,7 @@ struct LogEntry {
 // JSON: RollInfo (RollResult's own serializer is reopened into gm::roll
 // above, for ADL — see that block's comment)
 // ---------------------------------------------------------------------
-inline void to_json(json& j, const RollInfo& r) {
-    j = json{{"seed", r.seed}, {"result", r.result}};
-}
+inline void to_json(json& j, const RollInfo& r) { j = json{{"seed", r.seed}, {"result", r.result}}; }
 inline void from_json(const json& j, RollInfo& r) {
     j.at("seed").get_to(r.seed);
     j.at("result").get_to(r.result);
@@ -193,8 +192,10 @@ inline void to_json(json& j, const GauntletRejected& o) {
     if (o.conflicting_with_index) j["conflicting_with_index"] = *o.conflicting_with_index;
 }
 inline void from_json(const json& j, GauntletRejected& o) {
-    if (j.contains("roll")) o.roll = j.at("roll").get<RollInfo>();
-    else o.roll = std::nullopt;
+    if (j.contains("roll"))
+        o.roll = j.at("roll").get<RollInfo>();
+    else
+        o.roll = std::nullopt;
     j.at("effect_index").get_to(o.effect_index);
     j.at("stage").get_to(o.stage);
     j.at("reason").get_to(o.reason);
@@ -217,8 +218,10 @@ inline void to_json(json& j, const Applied& o) {
     j["vital_transitions"] = o.vital_transitions;  // may be an empty array
 }
 inline void from_json(const json& j, Applied& o) {
-    if (j.contains("roll")) o.roll = j.at("roll").get<RollInfo>();
-    else o.roll = std::nullopt;
+    if (j.contains("roll"))
+        o.roll = j.at("roll").get<RollInfo>();
+    else
+        o.roll = std::nullopt;
     j.at("applied_effects").get_to(o.applied_effects);
     j.at("narration").get_to(o.narration);
     j.at("world_before").get_to(o.world_before);
@@ -232,10 +235,14 @@ inline void to_json(json& j, const Outcome& o) {
 }
 inline void from_json(const json& j, Outcome& o) {
     const auto status = j.at("status").get<std::string>();
-    if (status == "modifier_budget_rejected") o = j.get<ModifierBudgetRejected>();
-    else if (status == "gauntlet_rejected")    o = j.get<GauntletRejected>();
-    else if (status == "applied")              o = j.get<Applied>();
-    else throw std::runtime_error("unknown log entry status '" + status + "'");
+    if (status == "modifier_budget_rejected")
+        o = j.get<ModifierBudgetRejected>();
+    else if (status == "gauntlet_rejected")
+        o = j.get<GauntletRejected>();
+    else if (status == "applied")
+        o = j.get<Applied>();
+    else
+        throw std::runtime_error("unknown log entry status '" + status + "'");
 }
 
 // ---------------------------------------------------------------------
@@ -250,8 +257,7 @@ inline void to_json(json& j, const LogEntry& e) {
     // instead of an object-within-an-object, cheaper to grep/skim on disk.
     json outcome_json;
     to_json(outcome_json, e.outcome);
-    for (auto it = outcome_json.begin(); it != outcome_json.end(); ++it)
-        j[it.key()] = it.value();
+    for (auto it = outcome_json.begin(); it != outcome_json.end(); ++it) j[it.key()] = it.value();
 }
 inline void from_json(const json& j, LogEntry& e) {
     j.at("turn_number").get_to(e.turn_number);

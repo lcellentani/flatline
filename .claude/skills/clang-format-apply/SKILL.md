@@ -6,7 +6,7 @@ description: Apply the project's .clang-format style via `clang-format -i`. Use 
 # clang-format-apply
 
 Runs `clang-format -i` against the project's `.clang-format`
-(BasedOnStyle: Google, 4-space indent, 100-col — see
+(BasedOnStyle: Google, 4-space indent, 120-col — see
 `.claude/rules/coding_style.md`).
 
 ## Resolving the file set

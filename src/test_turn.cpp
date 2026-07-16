@@ -12,6 +12,11 @@
 //
 // Build: g++ -std=c++20 -I. -I<path-to-nlohmann> -Wall -Wextra test_turn.cpp -o test_turn
 
+#include <cstdio>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
 #include "gm_applier.hpp"
 #include "gm_effects.hpp"
 #include "gm_gauntlet.hpp"
@@ -19,18 +24,19 @@
 #include "gm_log.hpp"
 #include "gm_roll.hpp"
 #include "gm_turn.hpp"
-#include <cstdio>
-#include <fstream>
-#include <iostream>
-#include <sstream>
 
 using namespace gm;
 
 static int g_pass = 0, g_fail = 0;
 
 static void check(bool cond, const char* name) {
-    if (cond) { std::cout << "PASS  " << name << "\n"; ++g_pass; }
-    else      { std::cout << "FAIL  " << name << "\n"; ++g_fail; }
+    if (cond) {
+        std::cout << "PASS  " << name << "\n";
+        ++g_pass;
+    } else {
+        std::cout << "FAIL  " << name << "\n";
+        ++g_fail;
+    }
 }
 
 static std::string slurp(const char* path) {
@@ -88,10 +94,8 @@ int main() {
             auto* expected_failure = std::get_if<gauntlet::Failure>(&gauntlet_result);
             check(expected_failure != nullptr, "hallucinated: an independently-run gauntlet also rejects");
             if (expected_failure) {
-                check(rejected->effect_index == expected_failure->effect_index,
-                      "hallucinated: effect_index matches");
-                check(rejected->stage == gauntlet::stage_name(expected_failure->stage),
-                      "hallucinated: stage matches");
+                check(rejected->effect_index == expected_failure->effect_index, "hallucinated: effect_index matches");
+                check(rejected->stage == gauntlet::stage_name(expected_failure->stage), "hallucinated: stage matches");
                 check(rejected->stage == "ids_exist", "hallucinated: rejection stage is specifically ids_exist");
                 check(rejected->reason == expected_failure->reason, "hallucinated: reason string matches");
             }
@@ -109,7 +113,8 @@ int main() {
         check(log::read_log(kScratchLog).size() == 1, "log: exactly one entry after first call (Applied)");
 
         turn::process_turn(room, 2, halluc, kScratchLog);
-        check(log::read_log(kScratchLog).size() == 2, "log: exactly one MORE entry after second call (GauntletRejected)");
+        check(log::read_log(kScratchLog).size() == 2,
+              "log: exactly one MORE entry after second call (GauntletRejected)");
 
         WorkOrder over_budget = bribe;
         over_budget.modifiers = {{"too_much", 100}};

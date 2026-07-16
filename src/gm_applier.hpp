@@ -1,11 +1,12 @@
 #pragma once
-#include "gm_effects.hpp"
-#include "gm_rules.hpp"
-#include "gm_state.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <variant>
 #include <vector>
+
+#include "gm_effects.hpp"
+#include "gm_rules.hpp"
+#include "gm_state.hpp"
 
 // GM Adjudicator — v0 applier.
 // Realizes the [APPLY] seam marked in wizard_of_oz_demo.cpp since session
@@ -69,9 +70,15 @@ inline void adjust_hp(World& world, const EntityId& id, int64_t delta) {
 }
 
 inline void set_vital(World& world, const EntityId& id, VitalState v) {
-    if (id == world.player.id) { world.player.vital = v; return; }
+    if (id == world.player.id) {
+        world.player.vital = v;
+        return;
+    }
     for (auto& entity : world.entities)
-        if (entity.id == id) { entity.vital = v; return; }
+        if (entity.id == id) {
+            entity.vital = v;
+            return;
+        }
     // Unreachable for a gauntlet-approved batch, same posture as adjust_hp above.
 }
 
@@ -109,8 +116,7 @@ inline void apply_one(World& world, const ModifyDisposition& e) {
     // reaches here (gm_gauntlet.hpp's clamp_disposition_delta computes
     // target - current, not the raw proposed delta) — plain addition is
     // correct, no second clamp needed.
-    if (Entity* entity = find_entity(world, e.entity))
-        entity->disposition += e.delta;
+    if (Entity* entity = find_entity(world, e.entity)) entity->disposition += e.delta;
 }
 
 inline void apply_one(World& world, const TransferItem& e) {
@@ -121,8 +127,7 @@ inline void apply_one(World& world, const TransferItem& e) {
         if (it != from_items->end()) from_items->erase(it);
     }
     if (e.to == VOID_ENTITY) return;  // consumed/destroyed — no destination to add to
-    if (auto* to_items = holder_items(world, e.to))
-        to_items->push_back(e.item);
+    if (auto* to_items = holder_items(world, e.to)) to_items->push_back(e.item);
 }
 
 inline void apply_one(World& world, const ModifyResource& e) {
@@ -136,8 +141,7 @@ inline void apply_one(World& world, const ModifyResource& e) {
 }
 
 inline void apply_one(World& world, const SetObjectState& e) {
-    if (ObjectState* object = find_object(world, e.object))
-        object->properties[e.property] = e.value;
+    if (ObjectState* object = find_object(world, e.object)) object->properties[e.property] = e.value;
 }
 
 inline void apply_one(World& world, const SetFlag& e) {
@@ -150,15 +154,13 @@ namespace gm::applier {
 
 inline World apply(const World& world, const std::vector<Effect>& effects) {
     World out = world;
-    for (const auto& effect : effects)
-        std::visit([&](const auto& e) { detail::apply_one(out, e); }, effect);
+    for (const auto& effect : effects) std::visit([&](const auto& e) { detail::apply_one(out, e); }, effect);
 
     // Vital state derives from the whole batch's raw hp delta against hp
     // *before this turn* (gm_rules.hpp::vital_deltas), not from `out`'s
     // already-floored/ceilinged hp — see that function's own comment and
     // the header comment above adjust_hp.
-    for (const auto& delta : rules::vital_deltas(world, effects))
-        detail::set_vital(out, delta.entity, delta.next);
+    for (const auto& delta : rules::vital_deltas(world, effects)) detail::set_vital(out, delta.entity, delta.next);
 
     return out;
 }
@@ -186,8 +188,7 @@ struct VitalTransition {
     int64_t overkill;
 };
 
-inline std::vector<VitalTransition> vital_transitions(const World& world_before,
-                                                        const std::vector<Effect>& effects) {
+inline std::vector<VitalTransition> vital_transitions(const World& world_before, const std::vector<Effect>& effects) {
     std::vector<VitalTransition> transitions;
     for (const auto& delta : rules::vital_deltas(world_before, effects)) {
         if (delta.previous == delta.next) continue;

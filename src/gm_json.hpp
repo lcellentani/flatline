@@ -1,9 +1,10 @@
 #pragma once
-#include "gm_effects.hpp"
-#include "gm_state.hpp"
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
+
+#include "gm_effects.hpp"
+#include "gm_state.hpp"
 
 // GM Adjudicator — v0 serialization bridge (JSON <-> contract structs).
 //
@@ -57,10 +58,14 @@ struct adl_serializer<gm::PropertyValue> {
         std::visit([&](auto&& x) { j = x; }, v);
     }
     static void from_json(const json& j, gm::PropertyValue& v) {
-        if (j.is_boolean())             v = j.get<bool>();
-        else if (j.is_number_integer()) v = j.get<int64_t>();
-        else if (j.is_string())         v = j.get<std::string>();
-        else throw std::runtime_error("PropertyValue must be bool, integer, or string");
+        if (j.is_boolean())
+            v = j.get<bool>();
+        else if (j.is_number_integer())
+            v = j.get<int64_t>();
+        else if (j.is_string())
+            v = j.get<std::string>();
+        else
+            throw std::runtime_error("PropertyValue must be bool, integer, or string");
     }
 };
 }  // namespace nlohmann
@@ -71,42 +76,58 @@ using json = nlohmann::json;
 
 // ---- ids: plain JSON strings (the GM only ever sees ids as strings) --------
 // Id<Tag> lives in gm, so these are found by ADL.
-template <typename Tag> void to_json(json& j, const Id<Tag>& id) { j = id.value; }
-template <typename Tag> void from_json(const json& j, Id<Tag>& id) { j.get_to(id.value); }
+template <typename Tag>
+void to_json(json& j, const Id<Tag>& id) {
+    j = id.value;
+}
+template <typename Tag>
+void from_json(const json& j, Id<Tag>& id) {
+    j.get_to(id.value);
+}
 
 // ---- effects ---------------------------------------------------------------
 inline void to_json(json& j, const Damage& e) {
-    j = json{{"type","damage"}, {"source",e.source}, {"target",e.target}, {"via",e.via}, {"amount",e.amount}};
+    j = json{{"type", "damage"}, {"source", e.source}, {"target", e.target}, {"via", e.via}, {"amount", e.amount}};
 }
 inline void from_json(const json& j, Damage& e) {
-    j.at("source").get_to(e.source); j.at("target").get_to(e.target); j.at("via").get_to(e.via); j.at("amount").get_to(e.amount);
+    j.at("source").get_to(e.source);
+    j.at("target").get_to(e.target);
+    j.at("via").get_to(e.via);
+    j.at("amount").get_to(e.amount);
 }
 
 inline void to_json(json& j, const ModifyDisposition& e) {
-    j = json{{"type","modify_disposition"}, {"entity",e.entity}, {"delta",e.delta}};
+    j = json{{"type", "modify_disposition"}, {"entity", e.entity}, {"delta", e.delta}};
 }
 inline void from_json(const json& j, ModifyDisposition& e) {
-    j.at("entity").get_to(e.entity); j.at("delta").get_to(e.delta);
+    j.at("entity").get_to(e.entity);
+    j.at("delta").get_to(e.delta);
 }
 
 inline void to_json(json& j, const TransferItem& e) {
-    j = json{{"type","transfer_item"}, {"item",e.item}, {"from",e.from}, {"to",e.to}};
+    j = json{{"type", "transfer_item"}, {"item", e.item}, {"from", e.from}, {"to", e.to}};
 }
 inline void from_json(const json& j, TransferItem& e) {
-    j.at("item").get_to(e.item); j.at("from").get_to(e.from); j.at("to").get_to(e.to);
+    j.at("item").get_to(e.item);
+    j.at("from").get_to(e.from);
+    j.at("to").get_to(e.to);
 }
 
 inline void to_json(json& j, const ModifyResource& e) {
-    j = json{{"type","modify_resource"}, {"actor",e.actor},
+    j = json{{"type", "modify_resource"},
+             {"actor", e.actor},
              {"resource", e.resource == ModifyResource::Resource::Gold ? "gold" : "hp"},
-             {"delta",e.delta}};
+             {"delta", e.delta}};
 }
 inline void from_json(const json& j, ModifyResource& e) {
     j.at("actor").get_to(e.actor);
     const auto r = j.at("resource").get<std::string>();
-    if (r == "gold")    e.resource = ModifyResource::Resource::Gold;
-    else if (r == "hp") e.resource = ModifyResource::Resource::Hp;
-    else throw std::runtime_error("modify_resource: unknown resource '" + r + "'");
+    if (r == "gold")
+        e.resource = ModifyResource::Resource::Gold;
+    else if (r == "hp")
+        e.resource = ModifyResource::Resource::Hp;
+    else
+        throw std::runtime_error("modify_resource: unknown resource '" + r + "'");
     j.at("delta").get_to(e.delta);
 }
 
@@ -118,7 +139,9 @@ inline void to_json(json& j, const SetObjectState& e) {
     j["value"] = e.value;  // via adl_serializer<PropertyValue>
 }
 inline void from_json(const json& j, SetObjectState& e) {
-    j.at("object").get_to(e.object); j.at("property").get_to(e.property); j.at("value").get_to(e.value);
+    j.at("object").get_to(e.object);
+    j.at("property").get_to(e.property);
+    j.at("value").get_to(e.value);
 }
 
 inline void to_json(json& j, const SetFlag& e) {
@@ -128,61 +151,84 @@ inline void to_json(json& j, const SetFlag& e) {
     j["value"] = e.value;
 }
 inline void from_json(const json& j, SetFlag& e) {
-    j.at("key").get_to(e.key); j.at("value").get_to(e.value);
+    j.at("key").get_to(e.key);
+    j.at("value").get_to(e.value);
 }
 
 // ---- the Effect variant: dispatch on "type" (closed vocabulary gate) -------
 // Effect = std::variant<gm::Damage, …>; gm IS associated via the args, so ADL
 // finds these.
-inline void to_json(json& j, const Effect& e) { std::visit([&](auto&& x) { to_json(j, x); }, e); }
+inline void to_json(json& j, const Effect& e) {
+    std::visit([&](auto&& x) { to_json(j, x); }, e);
+}
 inline void from_json(const json& j, Effect& e) {
     const auto t = j.at("type").get<std::string>();
-    if      (t == "damage")             e = j.get<Damage>();
-    else if (t == "modify_disposition") e = j.get<ModifyDisposition>();
-    else if (t == "transfer_item")      e = j.get<TransferItem>();
-    else if (t == "modify_resource")    e = j.get<ModifyResource>();
-    else if (t == "set_object_state")   e = j.get<SetObjectState>();
-    else if (t == "set_flag")           e = j.get<SetFlag>();
-    else throw std::runtime_error("unknown effect type '" + t + "' (not in the closed v0 vocabulary)");
+    if (t == "damage")
+        e = j.get<Damage>();
+    else if (t == "modify_disposition")
+        e = j.get<ModifyDisposition>();
+    else if (t == "transfer_item")
+        e = j.get<TransferItem>();
+    else if (t == "modify_resource")
+        e = j.get<ModifyResource>();
+    else if (t == "set_object_state")
+        e = j.get<SetObjectState>();
+    else if (t == "set_flag")
+        e = j.get<SetFlag>();
+    else
+        throw std::runtime_error("unknown effect type '" + t + "' (not in the closed v0 vocabulary)");
 }
 
 // ---- ruling, modifier, work order ------------------------------------------
 inline void to_json(json& j, const Ruling& r) {
     switch (r) {
-        case Ruling::Allow:   j = "allow";   break;
-        case Ruling::Partial: j = "partial"; break;
-        case Ruling::Deny:    j = "deny";    break;
+        case Ruling::Allow:
+            j = "allow";
+            break;
+        case Ruling::Partial:
+            j = "partial";
+            break;
+        case Ruling::Deny:
+            j = "deny";
+            break;
     }
 }
 inline void from_json(const json& j, Ruling& r) {
     const auto s = j.get<std::string>();
-    if      (s == "allow")   r = Ruling::Allow;
-    else if (s == "partial") r = Ruling::Partial;
-    else if (s == "deny")    r = Ruling::Deny;
-    else throw std::runtime_error("unknown ruling '" + s + "'");
+    if (s == "allow")
+        r = Ruling::Allow;
+    else if (s == "partial")
+        r = Ruling::Partial;
+    else if (s == "deny")
+        r = Ruling::Deny;
+    else
+        throw std::runtime_error("unknown ruling '" + s + "'");
 }
 
-inline void to_json(json& j, const Modifier& m) { j = json{{"label",m.label}, {"value",m.value}}; }
-inline void from_json(const json& j, Modifier& m) { j.at("label").get_to(m.label); j.at("value").get_to(m.value); }
+inline void to_json(json& j, const Modifier& m) { j = json{{"label", m.label}, {"value", m.value}}; }
+inline void from_json(const json& j, Modifier& m) {
+    j.at("label").get_to(m.label);
+    j.at("value").get_to(m.value);
+}
 
 inline void to_json(json& j, const WorkOrder& w) {
     j = json::object();
-    j["interpretation"]       = w.interpretation;
-    j["ruling"]               = w.ruling;
-    j["modifiers"]            = w.modifiers;
-    j["effects_on_success"]   = w.effects_on_success;
+    j["interpretation"] = w.interpretation;
+    j["ruling"] = w.ruling;
+    j["modifiers"] = w.modifiers;
+    j["effects_on_success"] = w.effects_on_success;
     j["narration_on_success"] = w.narration_on_success;
-    j["effects_on_failure"]   = w.effects_on_failure;
+    j["effects_on_failure"] = w.effects_on_failure;
     j["narration_on_failure"] = w.narration_on_failure;
 }
 inline void from_json(const json& j, WorkOrder& w) {
     j.at("interpretation").get_to(w.interpretation);
     j.at("ruling").get_to(w.ruling);
     // Tolerant of omissions so the human types less and the model has fewer required fields:
-    w.modifiers            = j.value("modifiers", std::vector<Modifier>{});
-    w.effects_on_success   = j.value("effects_on_success", std::vector<Effect>{});
+    w.modifiers = j.value("modifiers", std::vector<Modifier>{});
+    w.effects_on_success = j.value("effects_on_success", std::vector<Effect>{});
     w.narration_on_success = j.value("narration_on_success", std::string{});
-    w.effects_on_failure   = j.value("effects_on_failure", std::vector<Effect>{});
+    w.effects_on_failure = j.value("effects_on_failure", std::vector<Effect>{});
     w.narration_on_failure = j.value("narration_on_failure", std::string{});
 }
 
@@ -191,39 +237,48 @@ inline void from_json(const json& j, WorkOrder& w) {
 // from_json accepts either the label or a raw ordinal int.
 inline std::string disposition_label(int32_t d) {
     switch (d) {
-        case disposition::Hostile:    return "hostile";
-        case disposition::Unfriendly: return "unfriendly";
-        case disposition::Neutral:    return "neutral";
-        case disposition::Friendly:   return "friendly";
-        case disposition::Allied:     return "allied";
-        default:                      return std::to_string(d);
+        case disposition::Hostile:
+            return "hostile";
+        case disposition::Unfriendly:
+            return "unfriendly";
+        case disposition::Neutral:
+            return "neutral";
+        case disposition::Friendly:
+            return "friendly";
+        case disposition::Allied:
+            return "allied";
+        default:
+            return std::to_string(d);
     }
 }
 inline int32_t disposition_from(const json& j) {
     if (j.is_number_integer()) return j.get<int32_t>();
     const auto s = j.get<std::string>();
-    if (s == "hostile")    return disposition::Hostile;
+    if (s == "hostile") return disposition::Hostile;
     if (s == "unfriendly") return disposition::Unfriendly;
-    if (s == "neutral")    return disposition::Neutral;
-    if (s == "friendly")   return disposition::Friendly;
-    if (s == "allied")     return disposition::Allied;
+    if (s == "neutral") return disposition::Neutral;
+    if (s == "friendly") return disposition::Friendly;
+    if (s == "allied") return disposition::Allied;
     throw std::runtime_error("unknown disposition '" + s + "'");
 }
 
 // vital serializes as a readable label, same posture as disposition above.
 inline std::string vital_state_label(VitalState v) {
     switch (v) {
-        case VitalState::Alive:       return "alive";
-        case VitalState::Unconscious: return "unconscious";
-        case VitalState::Dead:        return "dead";
+        case VitalState::Alive:
+            return "alive";
+        case VitalState::Unconscious:
+            return "unconscious";
+        case VitalState::Dead:
+            return "dead";
     }
     return "unknown";
 }
 inline VitalState vital_state_from(const json& j) {
     const auto s = j.get<std::string>();
-    if (s == "alive")       return VitalState::Alive;
+    if (s == "alive") return VitalState::Alive;
     if (s == "unconscious") return VitalState::Unconscious;
-    if (s == "dead")        return VitalState::Dead;
+    if (s == "dead") return VitalState::Dead;
     throw std::runtime_error("unknown vital state '" + s + "'");
 }
 
@@ -251,7 +306,8 @@ inline void to_json(json& j, const Entity& e) {
     j["persona"] = e.persona;
 }
 inline void from_json(const json& j, Entity& e) {
-    j.at("id").get_to(e.id); j.at("hp").get_to(e.hp);
+    j.at("id").get_to(e.id);
+    j.at("hp").get_to(e.hp);
     // Tolerant of omission, same reasoning as World::flags below: fixtures
     // predating this field shouldn't need editing just to keep parsing.
     e.max_hp = j.value("max_hp", e.hp);
@@ -263,12 +319,17 @@ inline void from_json(const json& j, Entity& e) {
 
 inline void to_json(json& j, const Player& p) {
     j = json::object();
-    j["id"] = p.id; j["hp"] = p.hp; j["max_hp"] = p.max_hp;
+    j["id"] = p.id;
+    j["hp"] = p.hp;
+    j["max_hp"] = p.max_hp;
     j["vital"] = vital_state_label(p.vital);
-    j["gold"] = p.gold; j["inventory"] = p.inventory;
+    j["gold"] = p.gold;
+    j["inventory"] = p.inventory;
 }
 inline void from_json(const json& j, Player& p) {
-    j.at("id").get_to(p.id); j.at("hp").get_to(p.hp); j.at("gold").get_to(p.gold);
+    j.at("id").get_to(p.id);
+    j.at("hp").get_to(p.hp);
+    j.at("gold").get_to(p.gold);
     p.max_hp = j.value("max_hp", p.hp);
     p.vital = j.contains("vital") ? vital_state_from(j.at("vital")) : VitalState::Alive;
     p.inventory = j.value("inventory", std::vector<ItemId>{});
@@ -276,7 +337,8 @@ inline void from_json(const json& j, Player& p) {
 
 inline void to_json(json& j, const Room& r) {
     j = json::object();
-    j["id"] = r.id; j["exits"] = r.exits;
+    j["id"] = r.id;
+    j["exits"] = r.exits;
 }
 inline void from_json(const json& j, Room& r) {
     j.at("id").get_to(r.id);
@@ -285,12 +347,15 @@ inline void from_json(const json& j, Room& r) {
 
 inline void to_json(json& j, const World& w) {
     j = json::object();
-    j["room"] = w.room; j["objects"] = w.objects; j["entities"] = w.entities; j["player"] = w.player;
+    j["room"] = w.room;
+    j["objects"] = w.objects;
+    j["entities"] = w.entities;
+    j["player"] = w.player;
     j["flags"] = w.flags;
 }
 inline void from_json(const json& j, World& w) {
     j.at("room").get_to(w.room);
-    w.objects  = j.value("objects", std::vector<ObjectState>{});
+    w.objects = j.value("objects", std::vector<ObjectState>{});
     w.entities = j.value("entities", std::vector<Entity>{});
     j.at("player").get_to(w.player);
     // Tolerant of omission, same reasoning as WorkOrder's optional fields:
@@ -300,9 +365,9 @@ inline void from_json(const json& j, World& w) {
 }
 
 // ---- convenience -----------------------------------------------------------
-inline WorkOrder  parse_work_order(const std::string& s) { return json::parse(s).get<WorkOrder>(); }
-inline World      parse_world(const std::string& s)      { return json::parse(s).get<World>(); }
+inline WorkOrder parse_work_order(const std::string& s) { return json::parse(s).get<WorkOrder>(); }
+inline World parse_world(const std::string& s) { return json::parse(s).get<World>(); }
 inline std::string dump(const WorkOrder& w, int indent = 2) { return json(w).dump(indent); }
-inline std::string dump(const World& w, int indent = 2)     { return json(w).dump(indent); }
+inline std::string dump(const World& w, int indent = 2) { return json(w).dump(indent); }
 
 }  // namespace gm

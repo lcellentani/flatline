@@ -1,9 +1,10 @@
 #pragma once
-#include "gm_effects.hpp"  // Id<>, EntityId/ObjectId/ItemId, PropertyValue
 #include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
+
+#include "gm_effects.hpp"  // Id<>, EntityId/ObjectId/ItemId, PropertyValue
 
 // GM Adjudicator — v0 engine-owned state model.
 // Realizes gm-adjudicator.md §4 "Engine-owned state (the source of truth)".
@@ -19,12 +20,12 @@ namespace gm {
 // delta arithmetic is well-defined; the JSON bridge maps to/from the labels
 // below so authored rooms and state dumps stay human-legible.
 namespace disposition {
-    inline constexpr int Hostile    = -2;
-    inline constexpr int Unfriendly = -1;
-    inline constexpr int Neutral    =  0;
-    inline constexpr int Friendly   =  1;
-    inline constexpr int Allied     =  2;
-}
+inline constexpr int Hostile = -2;
+inline constexpr int Unfriendly = -1;
+inline constexpr int Neutral = 0;
+inline constexpr int Friendly = 1;
+inline constexpr int Allied = 2;
+}  // namespace disposition
 
 struct Exit {
     ObjectId object;  // the object gating this exit, e.g. door_north
@@ -53,11 +54,11 @@ enum class VitalState : uint8_t { Alive, Unconscious, Dead };
 struct Entity {
     EntityId id;
     int64_t hp;
-    int64_t max_hp;               // ceiling: gm_applier.hpp clamps hp to [0, max_hp]
+    int64_t max_hp;  // ceiling: gm_applier.hpp clamps hp to [0, max_hp]
     VitalState vital = VitalState::Alive;
-    int32_t disposition;         // ordinal; see disposition:: above
+    int32_t disposition;  // ordinal; see disposition:: above
     std::vector<ItemId> holds;
-    std::string persona;         // free text the GM reads; never mechanically parsed
+    std::string persona;  // free text the GM reads; never mechanically parsed
 };
 
 struct Player {

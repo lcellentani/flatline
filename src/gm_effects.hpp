@@ -43,7 +43,7 @@ struct ItemTag {};
 
 using EntityId = Id<EntityTag>;  // e.g. "guard_01", "player"
 using ObjectId = Id<ObjectTag>;  // e.g. "door_north"
-using ItemId   = Id<ItemTag>;    // e.g. "key_north", "oil_flask"
+using ItemId = Id<ItemTag>;      // e.g. "key_north", "oil_flask"
 
 // Reserved sink entity representing "consumed" / "destroyed". Formalizes
 // the spec's informal `<consumed>` target from the burn-the-door worked
@@ -88,13 +88,13 @@ using PropertyValue = std::variant<bool, int64_t, std::string>;
 struct Damage {
     EntityId source;  // who/what deals it
     EntityId target;
-    ItemId via;        // required — the specific item (or UNARMED_ITEM) used to deal the damage.
-                       // Resolves the former "which item caps the max when source holds several"
-                       // open question: the GM names the instrument explicitly rather than the
-                       // validator guessing "best weapon held." Looked up against the closed
-                       // damage-cap table in gm_rules.hpp. There is no unscoped "unarmed" default —
-                       // UNARMED_ITEM is itself a table row, not a fallback.
-    int64_t amount;    // clamped to via's cap (gm_rules.hpp) by the validator
+    ItemId via;      // required — the specific item (or UNARMED_ITEM) used to deal the damage.
+                     // Resolves the former "which item caps the max when source holds several"
+                     // open question: the GM names the instrument explicitly rather than the
+                     // validator guessing "best weapon held." Looked up against the closed
+                     // damage-cap table in gm_rules.hpp. There is no unscoped "unarmed" default —
+                     // UNARMED_ITEM is itself a table row, not a fallback.
+    int64_t amount;  // clamped to via's cap (gm_rules.hpp) by the validator
 };
 
 struct ModifyDisposition {
@@ -130,14 +130,7 @@ struct SetFlag {
     PropertyValue value;
 };
 
-using Effect = std::variant<
-    Damage,
-    ModifyDisposition,
-    TransferItem,
-    ModifyResource,
-    SetObjectState,
-    SetFlag
->;
+using Effect = std::variant<Damage, ModifyDisposition, TransferItem, ModifyResource, SetObjectState, SetFlag>;
 
 // ---------------------------------------------------------------------
 // The work order — what the GM emits, once per player turn
@@ -146,7 +139,7 @@ enum class Ruling : uint8_t { Allow, Partial, Deny };
 
 struct Modifier {
     std::string label;  // e.g. "bribable", "generous offer on a 15-gold purse"
-    int32_t value;       // feeds the engine's seeded roll
+    int32_t value;      // feeds the engine's seeded roll
 };
 
 // One-call decision (spec §5 open question #3, now closed for v0):
@@ -170,8 +163,8 @@ struct Modifier {
 // unconditionally. effects_on_failure/narration_on_failure stay empty —
 // there is no failure branch to define.
 struct WorkOrder {
-    std::string interpretation;   // one line: what the player is trying to do
-    Ruling ruling;                // scope decision — see above; not the roll outcome
+    std::string interpretation;  // one line: what the player is trying to do
+    Ruling ruling;               // scope decision — see above; not the roll outcome
 
     std::vector<Modifier> modifiers;  // feeds the engine's roll; empty => no roll, success is automatic
 
@@ -197,20 +190,23 @@ namespace gm::examples {
 inline WorkOrder bribe_the_guard() {
     return WorkOrder{
         .interpretation = "Player offers the guard 15 gold for the key.",
-        .ruling = Ruling::Partial,  // "hand over the key" is negotiable; "abandon post" was refused at scope, not by the roll
+        .ruling =
+            Ruling::Partial,  // "hand over the key" is negotiable; "abandon post" was refused at scope, not by the roll
         .modifiers = {{"bribable", 2}, {"generous_offer", 3}},
 
-        .effects_on_success = {
-            ModifyResource{{"player"}, ModifyResource::Resource::Gold, -15},
-            TransferItem{{"key_north"}, {"guard_01"}, {"player"}},
-            ModifyDisposition{{"guard_01"}, +1},
-        },
+        .effects_on_success =
+            {
+                ModifyResource{{"player"}, ModifyResource::Resource::Gold, -15},
+                TransferItem{{"key_north"}, {"guard_01"}, {"player"}},
+                ModifyDisposition{{"guard_01"}, +1},
+            },
         .narration_on_success =
             "The guard pockets the coin and slides you the key — but he's not budging from his post.",
 
-        .effects_on_failure = {
-            ModifyDisposition{{"guard_01"}, -1},
-        },
+        .effects_on_failure =
+            {
+                ModifyDisposition{{"guard_01"}, -1},
+            },
         .narration_on_failure =
             "The guard shoves the coin back at you, insulted. \"Try that again and I'll call the captain.\"",
     };
@@ -224,10 +220,11 @@ inline WorkOrder burn_the_door() {
         .ruling = Ruling::Allow,
         .modifiers = {},
 
-        .effects_on_success = {
-            SetObjectState{{"door_north"}, "locked", false},
-            TransferItem{{"oil_flask"}, {"player"}, VOID_ENTITY},
-        },
+        .effects_on_success =
+            {
+                SetObjectState{{"door_north"}, "locked", false},
+                TransferItem{{"oil_flask"}, {"player"}, VOID_ENTITY},
+            },
         .narration_on_success = "The oak catches fast; the lock gives way in a curl of smoke.",
         // no roll => no failure branch
     };
@@ -242,9 +239,10 @@ inline WorkOrder hallucinated_item() {
         .ruling = Ruling::Allow,
         .modifiers = {},
 
-        .effects_on_success = {
-            TransferItem{{"silver_key"}, {"guard_01"}, {"player"}},  // silver_key does not exist
-        },
+        .effects_on_success =
+            {
+                TransferItem{{"silver_key"}, {"guard_01"}, {"player"}},  // silver_key does not exist
+            },
         .narration_on_success = "The guard hands over a key.",
     };
 }

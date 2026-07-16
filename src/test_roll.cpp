@@ -16,29 +16,33 @@
 //
 // Build: g++ -std=c++20 -I. -Wall -Wextra test_roll.cpp -o test_roll
 
-#include "gm_roll.hpp"
-#include "gm_gauntlet.hpp"
-#include "gm_json.hpp"
 #include <cassert>
 #include <iostream>
 #include <set>
+
+#include "gm_gauntlet.hpp"
+#include "gm_json.hpp"
+#include "gm_roll.hpp"
 
 using namespace gm;
 
 static int g_pass = 0, g_fail = 0;
 
 static void check(bool cond, const char* name) {
-    if (cond) { std::cout << "PASS  " << name << "\n"; ++g_pass; }
-    else      { std::cout << "FAIL  " << name << "\n"; ++g_fail; }
+    if (cond) {
+        std::cout << "PASS  " << name << "\n";
+        ++g_pass;
+    } else {
+        std::cout << "FAIL  " << name << "\n";
+        ++g_fail;
+    }
 }
 
 int main() {
     // --- 1. fnv1a_64: deterministic, distinguishes distinct inputs --------
     {
-        check(roll::fnv1a_64("hello") == roll::fnv1a_64("hello"),
-              "fnv1a_64: same input -> same hash");
-        check(roll::fnv1a_64("hello") != roll::fnv1a_64("world"),
-              "fnv1a_64: different input -> different hash");
+        check(roll::fnv1a_64("hello") == roll::fnv1a_64("hello"), "fnv1a_64: same input -> same hash");
+        check(roll::fnv1a_64("hello") != roll::fnv1a_64("world"), "fnv1a_64: different input -> different hash");
     }
 
     // --- 2. resolve(): pure, deterministic, die in range -------------------
@@ -49,8 +53,7 @@ int main() {
               "resolve: same (seed, modifier_sum) -> identical RollResult");
         check(r1.die >= 1 && r1.die <= 20, "resolve: die always in [1,20]");
         check(r1.total == r1.die + r1.modifier_sum, "resolve: total == die + modifier_sum");
-        check(r1.success == (r1.total >= rules::kDifficultyClass),
-              "resolve: success == (total >= kDifficultyClass)");
+        check(r1.success == (r1.total >= rules::kDifficultyClass), "resolve: success == (total >= kDifficultyClass)");
     }
 
     // --- 3. resolve(): different seeds produce different dice (spot check,
@@ -86,7 +89,7 @@ int main() {
     // --- 6. resolve_turn(): content actually participates in the seed ------
     {
         WorkOrder wo_bribe = examples::bribe_the_guard();
-        WorkOrder wo_burn  = examples::burn_the_door();
+        WorkOrder wo_burn = examples::burn_the_door();
         check(roll::seed_for_turn(1, wo_bribe) != roll::seed_for_turn(1, wo_burn),
               "resolve_turn: different WorkOrder content (same turn_number) yields a different seed");
     }
@@ -106,8 +109,7 @@ int main() {
     // --- 8. modifier_budget_legal(): over budget on the positive side ------
     {
         std::vector<Modifier> over = {{"a", 4}, {"b", 3}};  // magnitude 7 > budget 5
-        check(!rules::modifier_budget_legal(over),
-              "modifier_budget_legal: magnitude 7 (positive-heavy) rejected");
+        check(!rules::modifier_budget_legal(over), "modifier_budget_legal: magnitude 7 (positive-heavy) rejected");
         auto failure = gauntlet::validate_modifiers(over);
         check(failure.has_value() && failure->magnitude_sum == 7 && failure->budget == 5,
               "gauntlet::validate_modifiers: over-budget batch reports correct magnitude_sum and budget");

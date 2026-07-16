@@ -17,14 +17,15 @@
 //
 // Build: g++ -std=c++20 -I. -Wall -Wextra test_applier.cpp -o test_applier
 
-#include "gm_applier.hpp"
-#include "gm_gauntlet.hpp"
-#include "gm_json.hpp"
 #include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <iostream>
 #include <sstream>
+
+#include "gm_applier.hpp"
+#include "gm_gauntlet.hpp"
+#include "gm_json.hpp"
 
 using namespace gm;
 
@@ -38,12 +39,18 @@ static std::string slurp(const char* path) {
 static int g_pass = 0, g_fail = 0;
 
 static void check(bool cond, const char* name) {
-    if (cond) { std::cout << "PASS  " << name << "\n"; ++g_pass; }
-    else      { std::cout << "FAIL  " << name << "\n"; ++g_fail; }
+    if (cond) {
+        std::cout << "PASS  " << name << "\n";
+        ++g_pass;
+    } else {
+        std::cout << "FAIL  " << name << "\n";
+        ++g_fail;
+    }
 }
 
 static Entity* find_entity(World& w, const char* id) {
-    for (auto& e : w.entities) if (e.id == EntityId{id}) return &e;
+    for (auto& e : w.entities)
+        if (e.id == EntityId{id}) return &e;
     return nullptr;
 }
 
@@ -60,16 +67,15 @@ int main() {
         check(after.player.gold == 0, "bribe success: gold 15 -> 0");
 
         bool player_has_key = std::find(after.player.inventory.begin(), after.player.inventory.end(),
-                                         ItemId{"key_north"}) != after.player.inventory.end();
+                                        ItemId{"key_north"}) != after.player.inventory.end();
         check(player_has_key, "bribe success: player now holds key_north");
 
         Entity* guard = find_entity(after, "guard_01");
         assert(guard);
-        bool guard_lost_key = std::find(guard->holds.begin(), guard->holds.end(),
-                                         ItemId{"key_north"}) == guard->holds.end();
+        bool guard_lost_key =
+            std::find(guard->holds.begin(), guard->holds.end(), ItemId{"key_north"}) == guard->holds.end();
         check(guard_lost_key, "bribe success: guard_01 no longer holds key_north");
-        check(guard->disposition == disposition::Friendly,
-              "bribe success: disposition neutral(0) -> friendly(+1)");
+        check(guard->disposition == disposition::Friendly, "bribe success: disposition neutral(0) -> friendly(+1)");
 
         // Original world must be untouched -- proves apply() is pure, not in-place.
         check(world.player.gold == 15, "bribe success: original World.player.gold untouched (pure function)");
@@ -85,8 +91,7 @@ int main() {
         check(after.player.gold == 15, "bribe failure: gold untouched");
         Entity* guard = find_entity(after, "guard_01");
         assert(guard);
-        check(guard->disposition == disposition::Unfriendly,
-              "bribe failure: disposition neutral(0) -> unfriendly(-1)");
+        check(guard->disposition == disposition::Unfriendly, "bribe failure: disposition neutral(0) -> unfriendly(-1)");
     }
 
     // --- 3. burn_the_door: success branch -----------------------------------
@@ -97,19 +102,19 @@ int main() {
         World after = applier::apply(world, *effects);
 
         auto door_it = std::find_if(after.objects.begin(), after.objects.end(),
-                                     [](const ObjectState& o) { return o.id == ObjectId{"door_north"}; });
+                                    [](const ObjectState& o) { return o.id == ObjectId{"door_north"}; });
         assert(door_it != after.objects.end());
         check(std::get<bool>(door_it->properties.at("locked")) == false, "burn: door_north.locked -> false");
 
         bool flask_gone = std::find(after.player.inventory.begin(), after.player.inventory.end(),
-                                     ItemId{"oil_flask"}) == after.player.inventory.end();
+                                    ItemId{"oil_flask"}) == after.player.inventory.end();
         check(flask_gone, "burn: oil_flask consumed (transfer to VOID_ENTITY)");
     }
 
     // --- 4. hp floor clamp: Damage, driven past zero by the applier, not the
     //        weapon cap (the cap already fired at gauntlet stage) -----------
     {
-        std::vector<Effect> batch = { Damage{{"player"}, {"guard_01"}, {"dagger"}, 999} };
+        std::vector<Effect> batch = {Damage{{"player"}, {"guard_01"}, {"dagger"}, 999}};
         auto result = gauntlet::run_gauntlet(world, batch);  // clamps amount 999 -> 4 (dagger's cap)
         auto* effects = std::get_if<std::vector<Effect>>(&result);
         assert(effects);
@@ -129,7 +134,7 @@ int main() {
     //        (locked session log 6: the floor is a property of hp, not of
     //        which effect touched it)
     {
-        std::vector<Effect> batch = { ModifyResource{{"guard_01"}, ModifyResource::Resource::Hp, -50} };
+        std::vector<Effect> batch = {ModifyResource{{"guard_01"}, ModifyResource::Resource::Hp, -50}};
         auto result = gauntlet::run_gauntlet(world, batch);
         auto* effects = std::get_if<std::vector<Effect>>(&result);
         assert(effects);
@@ -142,7 +147,7 @@ int main() {
 
     // --- 6. set_flag: writes into World::flags (previously nowhere to land) -
     {
-        std::vector<Effect> batch = { SetFlag{"guard_bribed_once", true} };
+        std::vector<Effect> batch = {SetFlag{"guard_bribed_once", true}};
         auto result = gauntlet::run_gauntlet(world, batch);  // always passes the gauntlet -- dormant there
         auto* effects = std::get_if<std::vector<Effect>>(&result);
         assert(effects);
@@ -155,21 +160,21 @@ int main() {
 
     // --- 7. transfer_item(from == to): legal no-op --------------------------
     {
-        std::vector<Effect> batch = { TransferItem{{"dagger"}, {"player"}, {"player"}} };
+        std::vector<Effect> batch = {TransferItem{{"dagger"}, {"player"}, {"player"}}};
         auto result = gauntlet::run_gauntlet(world, batch);
         auto* effects = std::get_if<std::vector<Effect>>(&result);
         assert(effects);
 
         World after = applier::apply(world, *effects);
-        int count = static_cast<int>(std::count(after.player.inventory.begin(), after.player.inventory.end(),
-                                                  ItemId{"dagger"}));
+        int count = static_cast<int>(
+            std::count(after.player.inventory.begin(), after.player.inventory.end(), ItemId{"dagger"}));
         check(count == 1, "transfer_item(from==to): no-op, item count unchanged (not duplicated or dropped)");
     }
 
     // --- 8. hp ceiling clamp: modify_resource(hp), symmetric with the floor
     //        (locked A2) -------------------------------------------------
     {
-        std::vector<Effect> batch = { ModifyResource{{"guard_01"}, ModifyResource::Resource::Hp, +50} };
+        std::vector<Effect> batch = {ModifyResource{{"guard_01"}, ModifyResource::Resource::Hp, +50}};
         auto result = gauntlet::run_gauntlet(world, batch);
         auto* effects = std::get_if<std::vector<Effect>>(&result);
         assert(effects);
@@ -188,7 +193,7 @@ int main() {
         assert(guard);
         guard->hp = 2;
 
-        std::vector<Effect> batch = { Damage{{"player"}, {"guard_01"}, {"dagger"}, 999} };  // clamps to 4
+        std::vector<Effect> batch = {Damage{{"player"}, {"guard_01"}, {"dagger"}, 999}};  // clamps to 4
         auto result = gauntlet::run_gauntlet(hurt, batch);
         auto* effects = std::get_if<std::vector<Effect>>(&result);
         assert(effects);
@@ -211,8 +216,8 @@ int main() {
                         // straight to Dead on a big enough combined blow, not just via Unconscious
 
         std::vector<Effect> batch = {
-            Damage{{"player"}, {"guard_01"}, {"dagger"}, 999},      // clamps to 4
-            Damage{{"player"}, {"guard_01"}, {"oil_flask"}, 999},   // clamps to 2
+            Damage{{"player"}, {"guard_01"}, {"dagger"}, 999},     // clamps to 4
+            Damage{{"player"}, {"guard_01"}, {"oil_flask"}, 999},  // clamps to 2
         };
         auto result = gauntlet::run_gauntlet(hurt, batch);
         auto* effects = std::get_if<std::vector<Effect>>(&result);
@@ -258,7 +263,7 @@ int main() {
         guard->hp = 0;
         guard->vital = VitalState::Unconscious;
 
-        std::vector<Effect> batch = { ModifyResource{{"guard_01"}, ModifyResource::Resource::Hp, +5} };
+        std::vector<Effect> batch = {ModifyResource{{"guard_01"}, ModifyResource::Resource::Hp, +5}};
         auto result = gauntlet::run_gauntlet(hurt, batch);
         auto* effects = std::get_if<std::vector<Effect>>(&result);
         assert(effects);
@@ -279,7 +284,7 @@ int main() {
 
     // --- 14. Player reaches the same three states an entity does ---------
     {
-        std::vector<Effect> batch = { ModifyResource{{"player"}, ModifyResource::Resource::Hp, -999} };
+        std::vector<Effect> batch = {ModifyResource{{"player"}, ModifyResource::Resource::Hp, -999}};
         auto result = gauntlet::run_gauntlet(world, batch);  // player starts at 20/20 hp, Alive
         auto* effects = std::get_if<std::vector<Effect>>(&result);
         assert(effects);

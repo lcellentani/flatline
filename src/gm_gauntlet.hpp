@@ -1,14 +1,15 @@
 #pragma once
-#include "gm_applier.hpp"
-#include "gm_effects.hpp"
-#include "gm_state.hpp"
-#include "gm_rules.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <optional>
 #include <string>
 #include <variant>
 #include <vector>
+
+#include "gm_applier.hpp"
+#include "gm_effects.hpp"
+#include "gm_rules.hpp"
+#include "gm_state.hpp"
 
 // GM Adjudicator — v0 validator gauntlet control flow.
 //
@@ -91,10 +92,14 @@ enum class Stage : uint8_t { IdsExist, Preconditions, MagnitudeBounds, BatchConf
 
 inline std::string stage_name(Stage s) {
     switch (s) {
-        case Stage::IdsExist:        return "ids_exist";
-        case Stage::Preconditions:   return "preconditions";
-        case Stage::MagnitudeBounds: return "magnitude_bounds";
-        case Stage::BatchConflict:   return "batch_conflict";
+        case Stage::IdsExist:
+            return "ids_exist";
+        case Stage::Preconditions:
+            return "preconditions";
+        case Stage::MagnitudeBounds:
+            return "magnitude_bounds";
+        case Stage::BatchConflict:
+            return "batch_conflict";
     }
     return "unknown";
 }
@@ -102,9 +107,9 @@ inline std::string stage_name(Stage s) {
 struct Failure {
     std::size_t effect_index;  // position within the branch passed to run_gauntlet
     Stage stage;
-    std::string reason;        // human-legible; keeps hallucination vs. table-gap vs.
-                                // precondition distinct per session log 4 §2.1 — never
-                                // collapse these into one label
+    std::string reason;  // human-legible; keeps hallucination vs. table-gap vs.
+                         // precondition distinct per session log 4 §2.1 — never
+                         // collapse these into one label
     // Set only when stage == BatchConflict: the index of the earlier effect
     // in this same branch whose application first broke a precondition that
     // was legal against the untouched pre-turn world (session log 11).
@@ -145,12 +150,11 @@ inline std::optional<Failure> ids_exist(const World& world, std::size_t idx, con
 inline std::optional<Failure> preconditions(const World& world, std::size_t idx, const Damage& e) {
     if (e.via != UNARMED_ITEM && e.via != FIRE_ITEM && !rules::holds(world, e.source, e.via))
         return Failure{idx, Stage::Preconditions,
-                        "damage.source '" + e.source.value + "' does not hold via '" + e.via.value + "'"};
+                       "damage.source '" + e.source.value + "' does not hold via '" + e.via.value + "'"};
     // Dead is terminal (gm_rules.hpp::derive_vital_state) — Unconscious remains
     // a legal target (finishing blows are ordinary damage until Dead).
     if (!rules::hp_effect_legal(world, e.target))
-        return Failure{idx, Stage::Preconditions,
-                        "damage.target '" + e.target.value + "' is already dead"};
+        return Failure{idx, Stage::Preconditions, "damage.target '" + e.target.value + "' is already dead"};
     return std::nullopt;
 }
 
@@ -161,7 +165,7 @@ inline std::variant<int64_t, Failure> magnitude_bounds(std::size_t idx, const Da
     auto cap = rules::damage_cap(e.via);
     if (!cap)
         return Failure{idx, Stage::MagnitudeBounds,
-                        "damage.via '" + e.via.value + "' has no damage-cap table entry (table gap)"};
+                       "damage.via '" + e.via.value + "' has no damage-cap table entry (table gap)"};
     return std::min(e.amount, *cap);
 }
 
@@ -174,15 +178,15 @@ inline std::optional<Failure> ids_exist(const World& world, std::size_t idx, con
 
 inline std::optional<Failure> preconditions(const World& world, std::size_t idx, const ModifyDisposition& e) {
     if (!rules::disposition_eligible(world, e.entity))
-        return Failure{idx, Stage::Preconditions,
-                        "modify_disposition.entity '" + e.entity.value + "' is not eligible (player has no disposition field)"};
+        return Failure{
+            idx, Stage::Preconditions,
+            "modify_disposition.entity '" + e.entity.value + "' is not eligible (player has no disposition field)"};
     // Separate check from the id-class one above (different reason to fail,
     // same discipline session log 4 used to keep a table gap and a
     // hallucination from sharing one label): an Unconscious or Dead entity
     // has no attitude to be modified right now.
     if (!rules::disposition_alive(world, e.entity))
-        return Failure{idx, Stage::Preconditions,
-                        "modify_disposition.entity '" + e.entity.value + "' is not alive"};
+        return Failure{idx, Stage::Preconditions, "modify_disposition.entity '" + e.entity.value + "' is not alive"};
     return std::nullopt;
 }
 
@@ -193,10 +197,13 @@ inline std::optional<Failure> preconditions(const World& world, std::size_t idx,
 inline int32_t clamp_disposition_delta(const World& world, const ModifyDisposition& e) {
     int32_t current = 0;
     for (const auto& entity : world.entities)
-        if (entity.id == e.entity) { current = entity.disposition; break; }
+        if (entity.id == e.entity) {
+            current = entity.disposition;
+            break;
+        }
     int32_t target = current + e.delta;
     if (target < disposition::Hostile) target = disposition::Hostile;
-    if (target > disposition::Allied)  target = disposition::Allied;
+    if (target > disposition::Allied) target = disposition::Allied;
     return target - current;
 }
 
@@ -215,7 +222,7 @@ inline std::optional<Failure> ids_exist(const World& world, std::size_t idx, con
 inline std::optional<Failure> preconditions(const World& world, std::size_t idx, const TransferItem& e) {
     if (!rules::holds(world, e.from, e.item))
         return Failure{idx, Stage::Preconditions,
-                        "transfer_item.from '" + e.from.value + "' does not hold item '" + e.item.value + "'"};
+                       "transfer_item.from '" + e.from.value + "' does not hold item '" + e.item.value + "'"};
     return std::nullopt;
 }
 
@@ -229,8 +236,9 @@ inline std::optional<Failure> ids_exist(const World& world, std::size_t idx, con
 inline std::optional<Failure> preconditions(const World& world, std::size_t idx, const ModifyResource& e) {
     if (!rules::resource_eligible(world, e.actor, e.resource)) {
         const char* res = (e.resource == ModifyResource::Resource::Gold) ? "gold" : "hp";
-        return Failure{idx, Stage::Preconditions,
-                        std::string("modify_resource.actor '") + e.actor.value + "' is not eligible for resource '" + res + "'"};
+        return Failure{
+            idx, Stage::Preconditions,
+            std::string("modify_resource.actor '") + e.actor.value + "' is not eligible for resource '" + res + "'"};
     }
     if (e.resource == ModifyResource::Resource::Gold && !rules::gold_spend_legal(world, e.delta))
         return Failure{idx, Stage::Preconditions, "modify_resource(gold) would take the actor negative"};
@@ -238,8 +246,7 @@ inline std::optional<Failure> preconditions(const World& world, std::size_t idx,
     // precondition — but Dead is terminal either direction, damage or
     // heal, same as Damage's target check above.
     if (e.resource == ModifyResource::Resource::Hp && !rules::hp_effect_legal(world, e.actor))
-        return Failure{idx, Stage::Preconditions,
-                        "modify_resource(hp).actor '" + e.actor.value + "' is already dead"};
+        return Failure{idx, Stage::Preconditions, "modify_resource(hp).actor '" + e.actor.value + "' is already dead"};
     return std::nullopt;
 }
 
@@ -253,11 +260,14 @@ inline std::optional<Failure> ids_exist(const World& world, std::size_t idx, con
 inline std::optional<Failure> preconditions(const World& world, std::size_t idx, const SetObjectState& e) {
     const ObjectState* obj = nullptr;
     for (const auto& o : world.objects)
-        if (o.id == e.object) { obj = &o; break; }
+        if (o.id == e.object) {
+            obj = &o;
+            break;
+        }
     // obj is guaranteed non-null here: ids_exist already passed for this effect.
     if (!rules::object_property_legal(*obj, e.property, e.value))
         return Failure{idx, Stage::Preconditions,
-                        "set_object_state: property '" + e.property + "' not legal on '" + e.object.value + "'"};
+                       "set_object_state: property '" + e.property + "' not legal on '" + e.object.value + "'"};
     return std::nullopt;
 }
 
@@ -298,10 +308,9 @@ inline std::optional<ModifierBudgetFailure> validate_modifiers(const std::vector
     // modifier_magnitude_sum() comment).
     int64_t magnitude_sum = rules::modifier_magnitude_sum(modifiers);
     if (magnitude_sum > rules::kModifierBudget) {
-        return ModifierBudgetFailure{
-            magnitude_sum, rules::kModifierBudget,
-            "modifier magnitude sum " + std::to_string(magnitude_sum) +
-                " exceeds budget " + std::to_string(rules::kModifierBudget)};
+        return ModifierBudgetFailure{magnitude_sum, rules::kModifierBudget,
+                                     "modifier magnitude sum " + std::to_string(magnitude_sum) + " exceeds budget " +
+                                         std::to_string(rules::kModifierBudget)};
     }
     return std::nullopt;
 }
@@ -339,8 +348,7 @@ inline Result run_gauntlet(const World& world, const std::vector<Effect>& branch
         // stale, and checking it against `folded` would misreport an item
         // a prior effect already consumed (VOID_ENTITY) as a hallucination
         // instead of the same-batch conflict it actually is.
-        if (auto failure = std::visit(
-                [&](const auto& e) { return detail::ids_exist(world, i, e); }, effect))
+        if (auto failure = std::visit([&](const auto& e) { return detail::ids_exist(world, i, e); }, effect))
             return *failure;
 
         // Stage: preconditions met — checked against `folded`, this
@@ -348,29 +356,28 @@ inline Result run_gauntlet(const World& world, const std::vector<Effect>& branch
         // pre-turn snapshot (session log 11). This is what makes a
         // same-batch conflict visible instead of both colliding effects
         // independently passing against a snapshot neither has mutated yet.
-        if (auto failure = std::visit(
-                [&](const auto& e) { return detail::preconditions(folded, i, e); }, effect)) {
+        if (auto failure = std::visit([&](const auto& e) { return detail::preconditions(folded, i, e); }, effect)) {
             // Distinguish "never legal, even at turn start" (an ordinary
             // Preconditions failure — re-check the identical precondition
             // against the untouched world) from "legal at turn start,
             // broken by an earlier effect in this same batch"
             // (BatchConflict).
-            bool legal_at_turn_start = !std::visit(
-                [&](const auto& e) { return detail::preconditions(world, i, e); }, effect)
-                .has_value();
-            if (!legal_at_turn_start)
-                return *failure;
+            bool legal_at_turn_start =
+                !std::visit([&](const auto& e) { return detail::preconditions(world, i, e); }, effect).has_value();
+            if (!legal_at_turn_start) return *failure;
 
             // Same-batch conflict: find the earliest prior effect whose
             // application first breaks this precondition, by replaying the
             // identical check against each intermediate state in `history`.
             std::optional<std::size_t> culprit;
             for (std::size_t k = 0; k < i; ++k) {
-                bool still_legal = !std::visit(
-                    [&](const auto& e) { return detail::preconditions(history[k + 1], i, e); },
-                    effect)
-                    .has_value();
-                if (!still_legal) { culprit = k; break; }
+                bool still_legal =
+                    !std::visit([&](const auto& e) { return detail::preconditions(history[k + 1], i, e); }, effect)
+                         .has_value();
+                if (!still_legal) {
+                    culprit = k;
+                    break;
+                }
             }
             return Failure{i, Stage::BatchConflict, failure->reason, culprit};
         }

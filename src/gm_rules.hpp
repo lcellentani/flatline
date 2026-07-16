@@ -1,6 +1,4 @@
 #pragma once
-#include "gm_effects.hpp"
-#include "gm_state.hpp"
 #include <cstdint>
 #include <cstdlib>
 #include <map>
@@ -8,6 +6,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "gm_effects.hpp"
+#include "gm_state.hpp"
 
 // GM Adjudicator — v0 validator reference data.
 //
@@ -48,16 +49,16 @@ namespace gm::rules {
 // no deny-unknown" stance already applied to effects (gm-adjudicator.md
 // §4), one level down: applied here to weapons instead of verbs.
 inline const std::map<std::string, int64_t> kDamageCap = {
-    {"dagger",      4},  // the sample weapon named in the spec's own Damage comment
-    {"oil_flask",   2},  // glass + fire; worse than a blade as a swung weapon
-    {"key_north",   1},  // blunt improvised object — comic-weak on purpose (context doc §7)
+    {"dagger", 4},       // the sample weapon named in the spec's own Damage comment
+    {"oil_flask", 2},    // glass + fire; worse than a blade as a swung weapon
+    {"key_north", 1},    // blunt improvised object — comic-weak on purpose (context doc §7)
     {"__unarmed__", 1},  // UNARMED_ITEM; fists. A stated table row, not a fallback.
-    {"__fire__",   14},  // FIRE_ITEM; shoved into open flame. Tuned to land guard_01
-                          // (hp 12/12) on Unconscious rather than Dead in one hit
-                          // (kDeathOvershoot = -5 below) — a single high-magnitude hit
-                          // standing in for sustained burn damage, not a damage-over-time
-                          // mechanic (no engine support for recurring effects exists in
-                          // v0; see docs/guides rulebook).
+    {"__fire__", 14},    // FIRE_ITEM; shoved into open flame. Tuned to land guard_01
+                         // (hp 12/12) on Unconscious rather than Dead in one hit
+                         // (kDeathOvershoot = -5 below) — a single high-magnitude hit
+                         // standing in for sustained burn damage, not a damage-over-time
+                         // mechanic (no engine support for recurring effects exists in
+                         // v0; see docs/guides rulebook).
 };
 
 // Looks up the cap for the item named by Damage::via. Returns nullopt on
@@ -179,7 +180,7 @@ inline bool disposition_eligible(const World& world, const EntityId& id) {
 // checked at the preconditions stage, never the existence stage.
 inline bool resource_eligible(const World& world, const EntityId& id, ModifyResource::Resource resource) {
     if (resource == ModifyResource::Resource::Hp) return true;  // hp exists on both Player and Entity
-    return id == world.player.id;  // gold exists only on Player
+    return id == world.player.id;                               // gold exists only on Player
 }
 
 // ---------------------------------------------------------------------
@@ -210,12 +211,10 @@ inline bool gold_spend_legal(const World& world, int64_t delta) {
 // cost of not generalizing once two objects of the same conceptual "type"
 // want different legal properties; that trade is deliberately deferred to
 // whenever room #2 makes it hurt.
-inline bool object_property_legal(const ObjectState& object,
-                                   const std::string& property,
-                                   const PropertyValue& value) {
+inline bool object_property_legal(const ObjectState& object, const std::string& property, const PropertyValue& value) {
     auto it = object.properties.find(property);
     if (it == object.properties.end()) return false;  // property wasn't seeded on this object
-    return it->second.index() == value.index();        // same variant alternative (type match)
+    return it->second.index() == value.index();       // same variant alternative (type match)
 }
 
 // ---------------------------------------------------------------------
@@ -272,7 +271,8 @@ inline VitalState derive_vital_state(VitalState previous, int64_t raw_hp_total) 
     if (previous == VitalState::Dead) return VitalState::Dead;
     if (raw_hp_total <= kDeathOvershoot) return VitalState::Dead;
     if (raw_hp_total <= 0) return VitalState::Unconscious;
-    return VitalState::Alive;  // covers Unconscious -> Alive: any heal that clears 0 wakes the entity, no extra threshold
+    return VitalState::Alive;  // covers Unconscious -> Alive: any heal that clears 0 wakes the entity, no extra
+                               // threshold
 }
 
 struct VitalDelta {
@@ -280,9 +280,9 @@ struct VitalDelta {
     VitalState previous;
     VitalState next;
     int64_t raw_hp_total;  // hp-before-this-turn plus the batch's cumulative
-                            // raw (pre-floor, pre-ceiling) delta — only
-                            // meaningful as an overshoot number once `next`
-                            // lands on Unconscious or Dead.
+                           // raw (pre-floor, pre-ceiling) delta — only
+                           // meaningful as an overshoot number once `next`
+                           // lands on Unconscious or Dead.
 };
 
 // Batch-level, not per-effect: two effects targeting the same entity in
@@ -299,15 +299,17 @@ inline std::vector<VitalDelta> vital_deltas(const World& world, const std::vecto
     std::vector<std::pair<EntityId, int64_t>> raw;
     auto accumulate = [&](const EntityId& id, int64_t delta) {
         for (auto& [eid, total] : raw)
-            if (eid == id) { total += delta; return; }
+            if (eid == id) {
+                total += delta;
+                return;
+            }
         raw.push_back({id, delta});
     };
     for (const auto& effect : effects) {
         if (const auto* dmg = std::get_if<Damage>(&effect)) {
             accumulate(dmg->target, -dmg->amount);
         } else if (const auto* res = std::get_if<ModifyResource>(&effect)) {
-            if (res->resource == ModifyResource::Resource::Hp)
-                accumulate(res->actor, res->delta);
+            if (res->resource == ModifyResource::Resource::Hp) accumulate(res->actor, res->delta);
         }
     }
 
@@ -345,9 +347,7 @@ inline bool disposition_alive(const World& world, const EntityId& id) {
 // pending work. This is the rule the eventual loop calls to stop;
 // correctness is proven here and in test_applier.cpp ahead of that loop
 // existing, so the loop's own future change is wiring, not new logic.
-inline bool session_over(const World& world) {
-    return world.player.vital == VitalState::Dead;
-}
+inline bool session_over(const World& world) { return world.player.vital == VitalState::Dead; }
 
 // ---------------------------------------------------------------------
 // modify_resource(hp) vs. damage — a convention, not an enforced rule

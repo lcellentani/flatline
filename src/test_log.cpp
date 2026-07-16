@@ -23,21 +23,27 @@
 //
 // Build: g++ -std=c++20 -I. -I<path-to-nlohmann> -Wall -Wextra test_log.cpp -o test_log
 
+#include <cstdio>
+#include <iostream>
+
 #include "gm_applier.hpp"
 #include "gm_gauntlet.hpp"
 #include "gm_json.hpp"
 #include "gm_log.hpp"
 #include "gm_roll.hpp"
-#include <cstdio>
-#include <iostream>
 
 using namespace gm;
 
 static int g_pass = 0, g_fail = 0;
 
 static void check(bool cond, const char* name) {
-    if (cond) { std::cout << "PASS  " << name << "\n"; ++g_pass; }
-    else      { std::cout << "FAIL  " << name << "\n"; ++g_fail; }
+    if (cond) {
+        std::cout << "PASS  " << name << "\n";
+        ++g_pass;
+    } else {
+        std::cout << "FAIL  " << name << "\n";
+        ++g_fail;
+    }
 }
 
 // Builds a real Applied outcome by actually running the pipeline on
@@ -151,10 +157,8 @@ int main() {
         WorkOrder wo = examples::hallucinated_item();
 
         // 5a. with a roll (turn rolled, then failed the gauntlet on the branch selected)
-        log::GauntletRejected with_roll{
-            log::RollInfo{12345ULL, roll::RollResult{15, 2, 17, true}},
-            0, "ids_exist", "transfer_item.item 'silver_key' does not exist"
-        };
+        log::GauntletRejected with_roll{log::RollInfo{12345ULL, roll::RollResult{15, 2, 17, true}}, 0, "ids_exist",
+                                        "transfer_item.item 'silver_key' does not exist"};
         json j1 = log::LogEntry{4, wo, with_roll};
         check(j1.contains("roll"), "GauntletRejected: roll field present when the turn actually rolled");
         auto parsed1 = j1.get<log::LogEntry>();
@@ -175,17 +179,14 @@ int main() {
 
         // 5c. a same-batch conflict (session log 11) -- conflicting_with_index
         // present this time, and must round-trip as a real value, not omitted.
-        log::GauntletRejected conflict{
-            std::nullopt, 1, "batch_conflict",
-            "transfer_item.from 'guard_01' does not hold item 'key_north'", 0
-        };
+        log::GauntletRejected conflict{std::nullopt, 1, "batch_conflict",
+                                       "transfer_item.from 'guard_01' does not hold item 'key_north'", 0};
         json j3 = log::LogEntry{6, wo, conflict};
         check(j3.contains("conflicting_with_index"),
               "GauntletRejected: conflicting_with_index present in JSON for a batch_conflict rejection");
         auto parsed3 = j3.get<log::LogEntry>();
         auto& g3 = std::get<log::GauntletRejected>(parsed3.outcome);
-        check(g3.stage == "batch_conflict" && g3.conflicting_with_index.has_value()
-                  && *g3.conflicting_with_index == 0,
+        check(g3.stage == "batch_conflict" && g3.conflicting_with_index.has_value() && *g3.conflicting_with_index == 0,
               "GauntletRejected: conflicting_with_index round-trips as a real value, not omitted");
 
         // 5d. a log line written before this field existed still parses,
@@ -225,8 +226,7 @@ int main() {
         const std::string path = "test_log_output.jsonl";
         std::remove(path.c_str());
 
-        log::LogEntry e1{1, examples::burn_the_door(),
-                          log::ModifierBudgetRejected{7, 5, "over budget"}};
+        log::LogEntry e1{1, examples::burn_the_door(), log::ModifierBudgetRejected{7, 5, "over budget"}};
         log::LogEntry e2 = build_applied_entry(world, 2);
 
         log::append_to_file(path, e1);
@@ -234,8 +234,7 @@ int main() {
 
         auto entries = log::read_log(path);
         check(entries.size() == 2, "append_to_file/read_log: two appended entries -> two entries read back");
-        check(entries[0].turn_number == 1 && entries[1].turn_number == 2,
-              "append_to_file/read_log: order preserved");
+        check(entries[0].turn_number == 1 && entries[1].turn_number == 2, "append_to_file/read_log: order preserved");
         check(std::holds_alternative<log::ModifierBudgetRejected>(entries[0].outcome),
               "append_to_file/read_log: first entry's outcome kind preserved");
         check(std::holds_alternative<log::Applied>(entries[1].outcome),
@@ -243,8 +242,8 @@ int main() {
 
         // Append a third and confirm the first two survive untouched --
         // proves this is append, not rewrite.
-        log::append_to_file(path, log::LogEntry{3, examples::burn_the_door(),
-                                                  log::ModifierBudgetRejected{6, 5, "still over"}});
+        log::append_to_file(
+            path, log::LogEntry{3, examples::burn_the_door(), log::ModifierBudgetRejected{6, 5, "still over"}});
         auto entries2 = log::read_log(path);
         check(entries2.size() == 3 && entries2[0].turn_number == 1 && entries2[1].turn_number == 2,
               "append_to_file: appending a third entry leaves the first two intact (genuinely additive)");
@@ -257,7 +256,7 @@ int main() {
     //        mode already caught once for RollResult, session log 8)
     {
         World w2 = world;  // this file's own minimal fixture (guard_01 hp=10)
-        std::vector<Effect> batch = { ModifyResource{{"guard_01"}, ModifyResource::Resource::Hp, -999} };
+        std::vector<Effect> batch = {ModifyResource{{"guard_01"}, ModifyResource::Resource::Hp, -999}};
 
         auto gauntlet_result = gauntlet::run_gauntlet(w2, batch);
         auto* eff = std::get_if<std::vector<Effect>>(&gauntlet_result);
@@ -279,9 +278,8 @@ int main() {
         auto& a = std::get<log::Applied>(parsed.outcome);
         check(a.vital_transitions.size() == 1, "Applied round-trip: vital_transitions count preserved");
         check(a.vital_transitions[0].entity == EntityId{"guard_01"} &&
-              a.vital_transitions[0].from == VitalState::Alive &&
-              a.vital_transitions[0].to == VitalState::Dead &&
-              a.vital_transitions[0].overkill == transitions[0].overkill,
+                  a.vital_transitions[0].from == VitalState::Alive && a.vital_transitions[0].to == VitalState::Dead &&
+                  a.vital_transitions[0].overkill == transitions[0].overkill,
               "Applied round-trip: entity/from/to/overkill all preserved (ADL-reopened serializer correct)");
     }
 
@@ -290,8 +288,7 @@ int main() {
     {
         log::LogEntry entry = build_applied_entry(world, 8);  // bribe fixture, no hp effects
         json j = entry;
-        check(j.contains("vital_transitions") && j["vital_transitions"].is_array()
-                  && j["vital_transitions"].empty(),
+        check(j.contains("vital_transitions") && j["vital_transitions"].is_array() && j["vital_transitions"].empty(),
               "Applied JSON: vital_transitions present as an empty array, not omitted, on a non-combat turn");
     }
 

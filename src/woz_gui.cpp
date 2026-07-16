@@ -43,6 +43,8 @@ constexpr const char* kGuiLogPath = "gui_session_log.jsonl";
 // back from it once per frame right after the widget renders.
 constexpr size_t kWorkOrderBufSize = 16384;
 
+constexpr size_t kSaveFileNameBufSize = 256;
+
 namespace fs = std::filesystem;
 
 static std::string slurp(const char* path) {
@@ -56,10 +58,9 @@ static std::string slurp(const char* path) {
 // both render "Turn N -- <status> -- <teaser>" off the same stored LogEntry JSON.
 static std::string entry_label(const nlohmann::json& entry) {
     const std::string status = entry.value("status", std::string{});
-    const std::string teaser = status == "applied" ? entry.value("narration", std::string{})
-                                                   : entry.value("reason", std::string{});
-    return "Turn " + std::to_string(entry.value("turn_number", int64_t{0})) + " — " + status +
-           " — " + teaser;
+    const std::string teaser =
+        status == "applied" ? entry.value("narration", std::string{}) : entry.value("reason", std::string{});
+    return "Turn " + std::to_string(entry.value("turn_number", int64_t{0})) + " — " + status + " — " + teaser;
 }
 
 constexpr bool is_whitespace(char ch) {
@@ -111,11 +112,10 @@ int main(int argc, char* argv[]) {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
-    SDL_WindowFlags window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN |
-                                   SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    SDL_Window* window =
-        SDL_CreateWindow("Dear ImGui SDL3+OpenGL3 example", (int)(1280 * main_scale),
-                         (int)(800 * main_scale), window_flags);
+    SDL_WindowFlags window_flags =
+        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    SDL_Window* window = SDL_CreateWindow("Dear ImGui SDL3+OpenGL3 example", (int)(1280 * main_scale),
+                                          (int)(800 * main_scale), window_flags);
     if (window == nullptr) {
         printf("Error: SDL_CreateWindow(): %s\n", SDL_GetError());
         return 1;
@@ -145,9 +145,8 @@ int main(int argc, char* argv[]) {
 
     // Setup scaling
     ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(
-        main_scale);  // Bake a fixed style scale. (until we have a solution for dynamic style
-                      // scaling, changing this requires resetting Style + calling this again)
+    style.ScaleAllSizes(main_scale);  // Bake a fixed style scale. (until we have a solution for dynamic style
+                                      // scaling, changing this requires resetting Style + calling this again)
     style.FontScaleDpi = main_scale;  // Set initial font scale. (in docking branch: using
                                       // io.ConfigDpiScaleFonts=true automatically overrides this
                                       // for every window depending on the current monitor)
@@ -161,17 +160,14 @@ int main(int argc, char* argv[]) {
 
     int64_t turn_number = 1;
     std::string wo_text = kBlankWorkOrderSkeleton;  // GM WorkOrder panel's editable submit buffer
-    std::optional<std::string>
-        parse_error;  // set on a bad Submit, shown inline, cleared on next good Submit
-    std::vector<nlohmann::json>
-        log_entries;          // one gm::log::LogEntry per process_turn call, see 4.5
-    int selected_entry = -1;  // index into log_entries shown in the Log panel's detail pane
+    std::optional<std::string> parse_error;   // set on a bad Submit, shown inline, cleared on next good Submit
+    std::vector<nlohmann::json> log_entries;  // one gm::log::LogEntry per process_turn call, see 4.5
+    int selected_entry = -1;                  // index into log_entries shown in the Log panel's detail pane
 
-    std::vector<std::string>
-        saved_workorder_files;       // filenames under workorders/, scanned once at startup
-    int selected_session_turn = -1;  // index into log_entries currently previewed (WorkOrder panel)
-    int selected_saved_file = -1;    // index into saved_workorder_files currently previewed
-    std::string wo_preview_text;     // whichever of the above is selected, mutually exclusive
+    std::vector<std::string> saved_workorder_files;  // filenames under workorders/, scanned once at startup
+    int selected_session_turn = -1;                  // index into log_entries currently previewed (WorkOrder panel)
+    int selected_saved_file = -1;                    // index into saved_workorder_files currently previewed
+    std::string wo_preview_text;                     // whichever of the above is selected, mutually exclusive
 
     bool session_over = false;
 
@@ -198,13 +194,11 @@ int main(int argc, char* argv[]) {
         while (SDL_PollEvent(&event)) {
             ImGui_ImplSDL3_ProcessEvent(&event);
             if (event.type == SDL_EVENT_QUIT) done = true;
-            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
-                event.window.windowID == SDL_GetWindowID(window))
+            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))
                 done = true;
         }
 
-        // [If using SDL_MAIN_USE_CALLBACKS: all code below would likely be your SDL_AppIterate()
-        // function]
+        // [If using SDL_MAIN_USE_CALLBACKS: all code below would likely be your SDL_AppIterate() function]
         if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) {
             SDL_Delay(10);
             continue;
@@ -220,10 +214,10 @@ int main(int argc, char* argv[]) {
         ImGui::SetNextWindowSize(viewport->WorkSize);
         ImGui::SetNextWindowViewport(viewport->ID);
 
-        ImGuiWindowFlags host_window_flags =
-            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
-            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus |
-            ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoDocking;
+        ImGuiWindowFlags host_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+                                             ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                                             ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
+                                             ImGuiWindowFlags_NoDocking;
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -243,12 +237,10 @@ int main(int argc, char* argv[]) {
             ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->WorkSize);
 
             ImGuiID dock_id_left, dock_id_right;
-            ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.5f, &dock_id_left,
-                                        &dock_id_right);
+            ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.5f, &dock_id_left, &dock_id_right);
 
             ImGuiID dock_id_right_top, dock_id_right_bottom;
-            ImGui::DockBuilderSplitNode(dock_id_right, ImGuiDir_Up, 0.5f, &dock_id_right_top,
-                                        &dock_id_right_bottom);
+            ImGui::DockBuilderSplitNode(dock_id_right, ImGuiDir_Up, 0.5f, &dock_id_right_top, &dock_id_right_bottom);
 
             ImGui::DockBuilderDockWindow(kRoomDescriptionTitle, dock_id_left);
             ImGui::DockBuilderDockWindow(kWorkOrderTitle, dock_id_right_top);
@@ -277,8 +269,7 @@ int main(int argc, char* argv[]) {
         ImGui::SeparatorText("This Session");
         for (int i = static_cast<int>(log_entries.size()) - 1; i >= 0; --i) {
             bool is_selected = (selected_session_turn == i);
-            if (ImGui::Selectable(entry_label(log_entries[static_cast<size_t>(i)]).c_str(),
-                                  is_selected)) {
+            if (ImGui::Selectable(entry_label(log_entries[static_cast<size_t>(i)]).c_str(), is_selected)) {
                 selected_session_turn = i;
                 selected_saved_file = -1;
                 wo_preview_text = log_entries[static_cast<size_t>(i)].at("work_order").dump(2);
@@ -287,12 +278,10 @@ int main(int argc, char* argv[]) {
         ImGui::SeparatorText("Saved");
         for (int i = 0; i < static_cast<int>(saved_workorder_files.size()); ++i) {
             bool is_selected = (selected_saved_file == i);
-            if (ImGui::Selectable(saved_workorder_files[static_cast<size_t>(i)].c_str(),
-                                  is_selected)) {
+            if (ImGui::Selectable(saved_workorder_files[static_cast<size_t>(i)].c_str(), is_selected)) {
                 selected_saved_file = i;
                 selected_session_turn = -1;
-                wo_preview_text =
-                    slurp(("workorders/" + saved_workorder_files[static_cast<size_t>(i)]).c_str());
+                wo_preview_text = slurp(("workorders/" + saved_workorder_files[static_cast<size_t>(i)]).c_str());
             }
         }
         ImGui::EndChild();
@@ -316,8 +305,7 @@ int main(int argc, char* argv[]) {
 
         ImGui::Separator();
 
-        ImGui::InputTextMultiline("##WorkOrderEditor", wo_text_buf, sizeof(wo_text_buf),
-                                  ImVec2(-1.0f, -60.0f));
+        ImGui::InputTextMultiline("##WorkOrderEditor", wo_text_buf, sizeof(wo_text_buf), ImVec2(-1.0f, -60.0f));
         wo_text = wo_text_buf;
 
         const bool is_blank = trim(wo_text) == trim(kBlankWorkOrderSkeleton);
@@ -326,8 +314,7 @@ int main(int argc, char* argv[]) {
         if (ImGui::Button("Submit Turn")) {
             try {
                 WorkOrder wo = parse_work_order(wo_text);
-                auto [world_after, outcome] =
-                    turn::process_turn(world, turn_number, wo, kGuiLogPath);
+                auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, kGuiLogPath);
 
                 // Same LogEntry process_turn already built internally to append to
                 // kGuiLogPath -- reconstructed here from values already in scope, then
@@ -374,8 +361,7 @@ int main(int argc, char* argv[]) {
         ImGui::BeginChild("##LogEntryList", ImVec2(0.0f, 150.0f), ImGuiChildFlags_Borders);
         for (int i = 0; i < static_cast<int>(log_entries.size()); ++i) {
             bool is_selected = (selected_entry == i);
-            if (ImGui::Selectable(entry_label(log_entries[static_cast<size_t>(i)]).c_str(),
-                                  is_selected)) {
+            if (ImGui::Selectable(entry_label(log_entries[static_cast<size_t>(i)]).c_str(), is_selected)) {
                 selected_entry = i;
             }
         }
@@ -383,8 +369,7 @@ int main(int argc, char* argv[]) {
 
         ImGui::BeginChild("##LogEntryDetail", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders);
         if (selected_entry >= 0 && selected_entry < static_cast<int>(log_entries.size())) {
-            ImGui::TextUnformatted(
-                log_entries[static_cast<size_t>(selected_entry)].dump(2).c_str());
+            ImGui::TextUnformatted(log_entries[static_cast<size_t>(selected_entry)].dump(2).c_str());
         }
         ImGui::EndChild();
 
@@ -394,8 +379,8 @@ int main(int argc, char* argv[]) {
         ImGui::Render();
 
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w,
-                     clear_color.z * clear_color.w, clear_color.w);
+        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w,
+                     clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

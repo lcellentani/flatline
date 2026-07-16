@@ -27,15 +27,16 @@
 // the property this earns: re-running apply() on a logged entry's own
 // inputs reproduces its own recorded output.
 
+#include <fstream>
+#include <iostream>
+#include <optional>
+#include <sstream>
+
 #include "gm_gauntlet.hpp"
 #include "gm_json.hpp"
 #include "gm_log.hpp"
 #include "gm_roll.hpp"
 #include "gm_turn.hpp"
-#include <fstream>
-#include <iostream>
-#include <optional>
-#include <sstream>
 
 static const char* kLogPath = "woz_log.jsonl";
 
@@ -87,19 +88,17 @@ int main() {
         std::cout << "=== MODIFIER BUDGET ===\nOK (magnitude sum within kModifierBudget)\n\n";
 
         bool rolled = !wo.modifiers.empty();
-        const std::optional<log::RollInfo>* roll_info =
-            std::holds_alternative<log::GauntletRejected>(outcome)
-                ? &std::get<log::GauntletRejected>(outcome).roll
-                : &std::get<log::Applied>(outcome).roll;
+        const std::optional<log::RollInfo>* roll_info = std::holds_alternative<log::GauntletRejected>(outcome)
+                                                            ? &std::get<log::GauntletRejected>(outcome).roll
+                                                            : &std::get<log::Applied>(outcome).roll;
 
         bool success = true;
         if (rolled && *roll_info) {
             const auto& r = (*roll_info)->result;
             success = r.success;
             std::cout << "=== ROLL ===\n"
-                       << "die " << r.die << " + modifiers " << r.modifier_sum
-                       << " = " << r.total << " vs DC " << rules::kDifficultyClass
-                       << " -> " << (success ? "SUCCESS" : "FAILURE") << "\n\n";
+                      << "die " << r.die << " + modifiers " << r.modifier_sum << " = " << r.total << " vs DC "
+                      << rules::kDifficultyClass << " -> " << (success ? "SUCCESS" : "FAILURE") << "\n\n";
         } else {
             std::cout << "=== ROLL ===\nno modifiers -> no roll -> automatic success\n\n";
         }
@@ -110,12 +109,11 @@ int main() {
             std::cout << "=== NARRATION ===\n" << applied->narration << "\n\n";
             std::cout << "=== APPLIED (world before -> after) ===\n";
             std::cout << "player.gold : " << world.player.gold << " -> " << world_after.player.gold << "\n";
-            std::cout << "player.inventory size : " << world.player.inventory.size()
-                       << " -> " << world_after.player.inventory.size() << "\n\n";
+            std::cout << "player.inventory size : " << world.player.inventory.size() << " -> "
+                      << world_after.player.inventory.size() << "\n\n";
         } else {
             const auto& f = std::get<log::GauntletRejected>(outcome);
-            std::cout << "REJECTED at effect " << f.effect_index
-                       << " [" << f.stage << "]: " << f.reason << "\n\n";
+            std::cout << "REJECTED at effect " << f.effect_index << " [" << f.stage << "]: " << f.reason << "\n\n";
         }
     }
 
@@ -145,7 +143,7 @@ int main() {
     auto hallucination_result = gauntlet::run_gauntlet(world, hallucinated.effects_on_success);
     bool hallucination_caught = std::holds_alternative<gauntlet::Failure>(hallucination_result);
     std::cout << "hallucination worked example: "
-               << (hallucination_caught ? "rejected by gauntlet (correct)\n" : "NOT caught (bug)\n");
+              << (hallucination_caught ? "rejected by gauntlet (correct)\n" : "NOT caught (bug)\n");
 
     return (roundtrip_ok && hallucination_caught) ? 0 : 1;
 }

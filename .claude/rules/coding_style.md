@@ -102,7 +102,7 @@ export module app.render;
 4 spaces. No tabs.
 
 ## Line length
-100 characters maximum. Google specifies 80 — 100 is used here to accommodate module-qualified type names without forced wrapping.
+120 characters maximum. Google specifies 80 — 120 is used here to accommodate module-qualified type names without forced wrapping.
 
 ## Braces
 Opening brace on the same line as the statement that opens the block. No exceptions.
@@ -254,7 +254,7 @@ if (contains(widgets_, target)) {
 ```
 
 ### Format
-Single-line comments use `//` with one space after. No `/* */` block comments except for file headers.
+Single-line comments use `//` with one space after. No `/* */` block comments except for file headers. Comments go on their own line above the statement they explain, not trailing at the end of a line of code — a trailing comment can push an otherwise-short line past the column limit and force clang-format to wrap the code instead of the comment.
 
 ### Phase markers
 Use `// TODO(phaseN):` to flag work deferred to a later phase.
