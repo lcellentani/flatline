@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -77,6 +78,26 @@ constexpr std::string_view trim(std::string_view str) noexcept {
     const auto count = std::distance(start, end);
     return {str.data() + offset, static_cast<std::size_t>(count)};
 }
+
+constexpr std::string_view strip_json_suffix(std::string_view filename) noexcept {
+    constexpr std::string_view kExt = ".json";
+    if (filename.size() > kExt.size() && filename.ends_with(kExt)) {
+        return filename.substr(0, filename.size() - kExt.size());
+    }
+    return filename;
+}
+
+constexpr bool is_valid_filename(std::string_view filename) noexcept {
+    if (filename.empty()) {
+        return false;
+    }
+    return std::all_of(filename.begin(), filename.end(), [](char ch) {
+        const auto uc = static_cast<unsigned char>(ch);
+        return std::isalnum(uc) || ch == '_' || ch == '-';
+    });
+}
+
+// --- main app -----------------------------------------------
 
 int main(int argc, char* argv[]) {
     using namespace gm;
@@ -173,6 +194,11 @@ int main(int argc, char* argv[]) {
 
     char wo_text_buf[kWorkOrderBufSize];
     snprintf(wo_text_buf, sizeof(wo_text_buf), "%s", wo_text.c_str());
+
+    std::string save_filename;
+
+    char save_filename_buf[kSaveFileNameBufSize];
+    snprintf(save_filename_buf, sizeof(save_filename_buf), "%s", save_filename.c_str());
 
     try {
         if (fs::exists("workorders") && fs::is_directory("workorders")) {
@@ -344,6 +370,41 @@ int main(int argc, char* argv[]) {
         if (ImGui::Button("Reset")) {
             wo_text = kBlankWorkOrderSkeleton;
             snprintf(wo_text_buf, sizeof(wo_text_buf), "%s", wo_text.c_str());
+        }
+        ImGui::EndDisabled();
+
+        ImGui::SameLine();
+
+        ImGui::InputText("##filename", save_filename_buf, sizeof(save_filename_buf));
+        save_filename = save_filename_buf;
+
+        ImGui::SameLine();
+
+        ImGui::BeginDisabled(save_filename.empty());
+        if (ImGui::Button("Save")) {
+            const std::string_view bare = strip_json_suffix(save_filename);
+            if (!is_valid_filename(bare)) {
+                parse_error = "Invalid filename '" + save_filename + "': only letters, digits, '_' and '-' allowed.";
+            } else {
+                std::string name(bare);
+                name += ".json";
+                const std::string path = "workorders/" + name;
+
+                try {
+                    WorkOrder wo = parse_work_order(wo_text);
+                    if (fs::exists(path)) {
+                        parse_error = "A saved WorkOrder named '" + name + "' already exists.";
+                    } else {
+                        std::ofstream(path) << wo_text;
+                        saved_workorder_files.push_back(name);
+                        parse_error.reset();
+                        save_filename.clear();
+                        save_filename_buf[0] = '\0';
+                    }
+                } catch (const std::exception& ex) {
+                    parse_error = ex.what();
+                }
+            }
         }
         ImGui::EndDisabled();
 
