@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/woz-gui-qol.md` |
 | **Date** | 2026-07-14 |
-| **Status** | In Progress (1/4 phases done) |
+| **Status** | In Progress (2/4 phases done) |
 | **Effort** | 1 session (four phases, one file — Splitters is the largest phase) |
 
 ---
@@ -74,7 +74,7 @@ After this ships, `woz_gui` closes the four friction points found running real E
 
 ---
 
-### Phase 2: Draft Management — Reset & Save — In Progress
+### Phase 2: Draft Management — Reset & Save — Done
 
 **Objective:** A GM can discard an in-progress edit back to blank in one click (Reset), or promote the current buffer to a reusable `workorders/*.json` template (Save), without leaving the app.
 
@@ -97,6 +97,8 @@ After this ships, `woz_gui` closes the four friction points found running real E
 
 **File:** `src/woz_gui.cpp` (extends Task 2.1)
 **Tag:** T2 — real validation logic (allowlist check, collision check, trailing-`.json` strip) with correctness stakes (a bad filename must never reach the actual file write); worth an AI-drafted pass with author Q&A rather than blind delegation.
+
+**Actual:** T2 — AI drafted the full implementation (helper functions plus the Save click handler) as a walkthrough; author typed it in and iterated through several AI-reviewed rounds before landing. Review caught three issues along the way: an inverted `BeginDisabled(can_save)` that disabled Save exactly when the name was valid; an early extension-stripping helper that truncated at the first (then any) dot rather than only a trailing `.json`, silently mangling names; and a `parse_error` write that ran unconditionally every frame instead of only inside a click handler, clobbering Submit's own error message the same frame it was set. A follow-up round also caught `is_valid_filename` and `strip_json_suffix` disagreeing on what counts as an extension (arbitrary `.ext` names silently passed validation, then got double-extensioned on write) and a validate-before-strip ordering that rejected legitimate `foo.json` input; both fixed by reordering to strip-once-then-validate. Author verified all Task 2.2 acceptance criteria pass after the final fix.
 
 **Changes:**
 - Add a per-frame `std::string save_filename` and a fixed-capacity `char save_filename_buf[256]` alongside the existing `wo_text`/`wo_text_buf` pair (`woz_gui.cpp:154-155` pattern) — 256 comfortably covers any reasonable template name plus the appended `.json`, consistent with the rest of the panel using plain `snprintf`-sized buffers rather than dynamic strings for widget-backing storage.
