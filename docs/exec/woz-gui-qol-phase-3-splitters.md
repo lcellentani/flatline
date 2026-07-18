@@ -119,6 +119,8 @@ static bool splitter(const char* id, float& ratio, float total_extent, bool hori
 - Shrinking the window/panel below what the current ratio needs, with no drag in progress, visually floors the render at `kMinSplitPx` **without changing the stored ratio**; growing the window back out restores the original proportions exactly.
 - `splitter()` returns `true` on exactly the frame `IsItemDeactivatedAfterEdit()` fires, `false` on every other frame including every frame of an active drag.
 
+**Verified (2026-07-18):** `load_layout_or_default()`/`save_layout()` match this section verbatim — code review turned up no defects. `splitter()` as first implemented had one bug against this doc: the horizontal-drag branch used `ImVec2(kSplitterThickness, 1.0f)` instead of `ImVec2(kSplitterThickness, -1.0f)`, making the sidebar splitter's hit-region a literal 1px tall instead of filling the panel height. Fixed by the implementer in a follow-up pass; a second review confirmed `splitter()` now matches this section exactly. The floor-clamp/drag-reversal ACs (`kMinSplitPx` floor, no dead zone on reversal, floor-without-mutating-stored-ratio) are behavioral and require hands-on dragging — not yet run; see walkthrough steps 3–5 below, still open.
+
 ---
 
 ## 2. State: load layout at startup (part of Task 3.1)
@@ -162,6 +164,8 @@ LayoutRatios layout = load_layout_or_default();
 
 **Acceptance Criteria:** dragging live-resizes both the list sidebar and main content area within the same frame, no scroll/redraw glitch; closing and relaunching restores the dragged-to size, not the 220px default.
 
+**Verified (2026-07-18):** wiring matches this section's diff verbatim (only defect was the shared `splitter()` 1px hit-target bug noted in §1, already fixed). Live-drag and persist-across-relaunch themselves are behavioral ACs not run by this pass — left for manual confirmation (walkthrough steps 6–7). Circumstantial evidence a drag+persist cycle already works: `build/bin/gui_layout.json` on disk holds a non-default `sidebar` ratio (0.197 vs. the 0.344 baseline), consistent with a prior manual drag.
+
 ---
 
 ## 4. Wire the log-list splitter — Log entry-list vs. detail (Task 3.3)
@@ -187,6 +191,8 @@ LayoutRatios layout = load_layout_or_default();
 ```
 
 **Acceptance Criteria:** dragging live-resizes both entry list and detail view within the same frame; persists across relaunch (not the 150px default).
+
+**Verified (2026-07-18):** this section's wiring took two review passes to converge. First pass found two defects: (1) `clamp_ratio(layout.log_list, log_list_height)` read `log_list_height` in its own initializer instead of `log_panel_height` — undefined behavior (indeterminate float), silent because the project doesn't build with `-Wall`/`-Wextra`; (2) the splitter id was `"##LogEntryDetail"`, colliding with the actual detail child window's id three lines below instead of this doc's `"##LogListSplit"`. The implementer's follow-up fixed both, but left the `total_extent` argument at line 546 as `log_list_height` instead of this doc's `log_panel_height` — a third bug: with the default proportions (150/400 = 0.375), that passes `total_extent=150` into `clamp_ratio`, which is below `2×kMinSplitPx` (240), so the floor branch fires unconditionally and clamps the ratio to exactly 0.5 on the very first drag frame, regardless of drag direction. Fixed directly (one-word change, `log_list_height` → `log_panel_height`) and confirmed the file now matches this section exactly. Live-drag and persist-across-relaunch remain behavioral ACs, not yet run — see walkthrough steps 6–7, still open.
 
 ---
 
@@ -232,6 +238,8 @@ LayoutRatios layout = load_layout_or_default();
 
 **Acceptance Criteria:** dragging live-resizes both preview and editor; button row and `parse_error` text stay pinned at constant height (no jump on error appear/clear); persists across relaunch (not the 120px default).
 
+**Verified (2026-07-18):** wiring matches this section's diff verbatim — no defects found across two review passes. Live-drag, the no-jump-on-error AC, and persist-across-relaunch are behavioral, not yet run — see walkthrough steps 8–10, still open.
+
 ---
 
 ## 6. `.gitignore` addition (Task 3.5)
@@ -245,6 +253,8 @@ LayoutRatios layout = load_layout_or_default();
 ```
 
 **Acceptance Criteria:** `git status` stays clean after running `woz_gui`, dragging a splitter, and closing it.
+
+**Verified (2026-07-18):** confirmed automated, no manual step needed. `git check-ignore -v` shows two independent ignore paths cover `gui_layout.json`: the blanket `build/` rule (for `build/bin/gui_layout.json`) and the standalone `gui_layout.json` pattern added here (`.gitignore:15`), the latter verified directly against a repo-root copy so it isn't just riding on `build/`'s coattails. `git status` stayed clean (only the expected `.gitignore`/`src/woz_gui.cpp` modifications) through the launch/corrupt-file/relaunch cycle run for Task 3.1.
 
 ---
 
@@ -293,3 +303,24 @@ No `CMakeLists.txt` changes: `nlohmann::json`, `<filesystem>`, `<algorithm>`, an
 
 1. `cmake --build build --preset default` — builds cleanly, unchanged pass counts on all five suites plus `woz`/`woz_loop`.
 2. Run the walkthrough above against the built `woz_gui` binary; record results here the same way the sibling exec docs do.
+
+**Progress (2026-07-18):** Code review (two passes) plus an automated slice of the walkthrough are done; the interactive/visual slice is still open.
+
+Code review found and fixed three bugs relative to this doc, all in the log-list splitter's wiring and the shared `splitter()` helper — see the **Verified** notes under §1, §3, and §4 above for specifics (a 1px sidebar hit-target, an uninitialized-read self-reference, a splitter id collision, and a wrong `total_extent` argument that would've snapped the log-list ratio to 0.5 on first touch). After the fixes, `src/woz_gui.cpp` matches every diff in this doc exactly.
+
+Walkthrough steps run and passed:
+- **Steps 1–2** (Task 3.1, load/corrupt-file): deleted `gui_layout.json`, launched `woz_gui` — process stayed alive, never wrote the file back on its own (matches `save_layout` only firing on drag-end). Hand-truncated a corrupt `gui_layout.json`, relaunched — survived 5+ seconds, no crash. Real layout data restored afterward.
+- **Step 11** (Task 3.5, `.gitignore`): verified per §6's note above.
+- **Step 12** (regression): full rebuild was a no-op (already current); `test_gauntlet` 22/22, `test_log` 37/37, `test_applier` 31/31, `test_roll` 20/20, `test_turn` 18/18, `woz` exit 0 — all unchanged. `git status` clean throughout, no stray untracked files.
+
+Walkthrough steps 3–10 (drag mechanics, floor-clamp/reversal behavior, live-resize on all three splitters, persistence-across-relaunch, no-jump-on-error) need hands-on mouse interaction against the real window and were explicitly left for Ludo to run by hand rather than automated — no GUI-automation/screen-capture tooling was available to drive or observe them. `build/bin/gui_layout.json` already holding non-default ratios (`sidebar=0.197, preview=0.443, log_list=0.425`) is circumstantial evidence some of this was already exercised manually before this pass; still needs an explicit run-through to close out Tasks 3.2–3.4's behavioral ACs before this phase can move from "implemented" to "Done."
+
+**Update (2026-07-18):** Ludo ran walkthrough steps 3–10 by hand — all pass. Every splitter's drag/floor-clamp/persistence/no-jump behavior matches this doc's acceptance criteria against the real binary. Combined with steps 1–2/11/12 above, the full walkthrough is now complete.
+
+---
+
+## Known Limitations
+
+**OS-level window-border resize doesn't redraw live (found during manual verification, 2026-07-18).** Dragging the *native OS window border* to resize `woz_gui` freezes the rendered content until the mouse button is released — unlike the in-app splitters (this phase's actual subject), which do live-update within the same frame as confirmed above. Root cause: on Windows, dragging a window border enters a modal sizing loop inside `DefWindowProc` that takes over the message pump itself; the app's own `while (!done) { SDL_PollEvent(...); render(); }` loop (`woz_gui.cpp:313-320`) doesn't get control back to push new frames until the drag ends. This is a general Win32 characteristic of plain poll-then-render loops, not a defect in this phase's splitter code, and it predates Phase 3 — inherited from the original SDL3+OpenGL3 shell (`docs/exec/phase-3-woz-gui.md`), which doesn't handle it either.
+
+Standard fix, not implemented here: an `SDL_AddEventWatch` callback that forces a render on `SDL_EVENT_WINDOW_RESIZED`/`SDL_EVENT_WINDOW_EXPOSED` — that callback fires synchronously from inside the modal loop, unlike normal polled events. Deliberately deferred — out of this phase's (and this plan's) scope; a candidate follow-up, not tracked as a task here. See also `docs/plans/woz-gui-qol.md` §"Scope" for the pointer.

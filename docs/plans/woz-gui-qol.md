@@ -43,6 +43,7 @@ After this ships, `woz_gui` closes the four friction points found running real E
 - Renaming, deleting, or editing-in-place an existing `workorders/*.json` file
 - Any confirm-modal popup pattern
 - A "New Session" button/restart capability — discussed during spec drafting, deliberately not folded in; noted here as a candidate follow-up spec, not part of this plan
+- Live redraw during an OS-level window-border resize drag — found during Phase 3 manual verification (`docs/exec/woz-gui-qol-phase-3-splitters.md` §"Known Limitations"); a Win32 modal-sizing-loop stall in the SDL3+OpenGL3 shell itself (pre-existing, inherited from `docs/exec/phase-3-woz-gui.md`), unrelated to this plan's in-app splitters, which do live-update correctly. Noted here as a candidate follow-up, not part of this plan
 - An automated test suite for `woz_gui.cpp`'s logic (blank-skeleton compare, filename allowlist, layout load/save/defaults) — all genuinely unit-testable as pure functions, but a new `test_*` binary would require a `CMakeLists.txt` change, which the spec's own "How It Fits Existing Systems" explicitly rules out. Verification here stays manual, same as Task 3.4 in `gm-multiturn-loop.md`. Worth reconsidering in a future spec if `woz_gui.cpp` keeps growing.
 
 ---
