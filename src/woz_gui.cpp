@@ -57,6 +57,26 @@ static std::string slurp(const char* path) {
     return buffer.str();
 }
 
+// Scans workorders/ for *.json filenames -- shared by the startup scan and the
+// WorkOrder panel's Saved-group Refresh button, so there's one scan implementation,
+// not two independently-maintained copies.
+static std::vector<std::string> scan_workorders_dir() {
+    std::vector<std::string> files;
+    try {
+        if (fs::exists("workorders") && fs::is_directory("workorders")) {
+            for (const auto& dir_entry : fs::directory_iterator("workorders")) {
+                if (dir_entry.is_regular_file() && dir_entry.path().extension() == ".json") {
+                    files.push_back(dir_entry.path().filename().string());
+                }
+            }
+        }
+    } catch (const std::exception&) {
+        // workorders/ is an optional, curated folder -- any scan failure just leaves
+        // the Saved group empty rather than aborting the scan.
+    }
+    return files;
+}
+
 // Shared by the Log panel's entry list and the WorkOrder panel's This Session group --
 // both render "Turn N -- <status> -- <teaser>" off the same stored LogEntry JSON.
 static std::string entry_label(const nlohmann::json& entry) {
@@ -280,7 +300,7 @@ int main(int argc, char* argv[]) {
     std::vector<nlohmann::json> log_entries;        // one gm::log::LogEntry per process_turn call, see 4.5
     int selected_entry = -1;                        // index into log_entries shown in the Log panel's detail pane
 
-    std::vector<std::string> saved_workorder_files;  // filenames under workorders/, scanned once at startup
+    std::vector<std::string> saved_workorder_files;  // filenames under workorders/, populated at startup + Refresh
     int selected_session_turn = -1;                  // index into log_entries currently previewed (WorkOrder panel)
     int selected_saved_file = -1;                    // index into saved_workorder_files currently previewed
     std::string wo_preview_text;                     // whichever of the above is selected, mutually exclusive
@@ -297,18 +317,7 @@ int main(int argc, char* argv[]) {
     char save_filename_buf[kSaveFileNameBufSize];
     snprintf(save_filename_buf, sizeof(save_filename_buf), "%s", save_filename.c_str());
 
-    try {
-        if (fs::exists("workorders") && fs::is_directory("workorders")) {
-            for (const auto& dir_entry : fs::directory_iterator("workorders")) {
-                if (dir_entry.is_regular_file() && dir_entry.path().extension() == ".json") {
-                    saved_workorder_files.push_back(dir_entry.path().filename().string());
-                }
-            }
-        }
-    } catch (const std::exception&) {
-        // workorders/ is an optional, curated folder -- any scan failure just leaves
-        // the Saved group empty rather than aborting startup.
-    }
+    saved_workorder_files = scan_workorders_dir();
 
     bool done = false;
 
@@ -402,6 +411,30 @@ int main(int argc, char* argv[]) {
             }
         }
         ImGui::SeparatorText("Saved");
+        ImGui::SameLine();
+        if (ImGui::Button("Refresh")) {
+            // Only a Saved-group selection is in play here -- selected_session_turn's
+            // preview is untouched by a workorders/ rescan, so leave it alone entirely.
+            const bool had_saved_selection =
+                selected_saved_file >= 0 && selected_saved_file < static_cast<int>(saved_workorder_files.size());
+            const std::string selected_filename =
+                had_saved_selection ? saved_workorder_files[static_cast<size_t>(selected_saved_file)] : std::string{};
+
+            saved_workorder_files = scan_workorders_dir();
+
+            if (had_saved_selection) {
+                selected_saved_file = -1;
+                for (int i = 0; i < static_cast<int>(saved_workorder_files.size()); ++i) {
+                    if (saved_workorder_files[static_cast<size_t>(i)] == selected_filename) {
+                        selected_saved_file = i;
+                        break;
+                    }
+                }
+                if (selected_saved_file < 0) {
+                    wo_preview_text.clear();
+                }
+            }
+        }
         for (int i = 0; i < static_cast<int>(saved_workorder_files.size()); ++i) {
             bool is_selected = (selected_saved_file == i);
             if (ImGui::Selectable(saved_workorder_files[static_cast<size_t>(i)].c_str(), is_selected)) {
