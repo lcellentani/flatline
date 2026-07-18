@@ -12,6 +12,7 @@ compile_commands.json
 woz_log.jsonl
 session_log.jsonl
 gui_session_log.jsonl
+gui_layout.json
 
 # Dear ImGui's persisted window/dock layout (per-user, not source)
 imgui.ini

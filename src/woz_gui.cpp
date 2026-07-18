@@ -46,6 +46,8 @@ constexpr size_t kWorkOrderBufSize = 16384;
 
 constexpr size_t kSaveFileNameBufSize = 256;
 
+// --- Utilities ------------------------------------------------------------------------------------------------------
+
 namespace fs = std::filesystem;
 
 static std::string slurp(const char* path) {
@@ -97,7 +99,100 @@ constexpr bool is_valid_filename(std::string_view filename) noexcept {
     });
 }
 
-// --- main app -----------------------------------------------
+// --- Splitters ------------------------------------------------------------------------------------------------------
+
+constexpr float kMinSplitPx = 120.0f;
+constexpr float kSplitterThickness = 4.0f;
+constexpr const char* kLayoutPath = "gui_layout.json";
+
+// Back-computed from today's hardcoded pixel baselines (220/120/150) against a
+// rounded 640x400 reference -- half the SDL window's default 1280x800
+// (woz_gui.cpp:138-139), matching the WorkOrder/Log panels' actual 0.5/0.5
+// DockBuilder split (woz_gui.cpp:266,269). Reused as-is on first launch (no
+// gui_layout.json yet) and as the fallback whenever the file is missing,
+// unreadable, or fails to parse -- one set of defaults, not two.
+struct LayoutRatios {
+    float sidebar = 220.0f / 640.0f;
+    float preview = 120.0f / 400.0f;
+    float log_list = 150.0f / 400.0f;
+};
+
+static LayoutRatios load_layout_or_default() {
+    try {
+        const std::string raw = slurp(kLayoutPath);
+        if (raw.empty()) {
+            return LayoutRatios{};
+        }
+        const nlohmann::json j = nlohmann::json::parse(raw);
+        LayoutRatios layout;
+        layout.sidebar = j.at("sidebar").get<float>();
+        layout.preview = j.at("preview").get<float>();
+        layout.log_list = j.at("log_list").get<float>();
+        return layout;
+    } catch (const std::exception&) {
+        return LayoutRatios{};
+    }
+}
+static void save_layout(const LayoutRatios& layout) {
+    nlohmann::json j;
+    j["sidebar"] = layout.sidebar;
+    j["preview"] = layout.preview;
+    j["log_list"] = layout.log_list;
+    std::ofstream(kLayoutPath) << j.dump(2);
+}
+
+// Floor-clamps `ratio` against `total_extent` for *this frame's* rendering
+// only -- never mutates the caller's stored ratio. Recomputed fresh every
+// frame so a ratio squeezed by a small window immediately reflects its true
+// value again once the window grows back (spec §4: "don't clamp the stored
+// fraction").
+static float clamp_ratio(float ratio, float total_extent) {
+    const float min_ratio = total_extent > 2.0f * kMinSplitPx ? kMinSplitPx / total_extent : 0.5f;
+    return std::clamp(ratio, min_ratio, 1.0f - min_ratio);
+}
+
+// Renders a thin drag bar between two regions. While the user is actively
+// dragging, updates `ratio` in place (via clamp_ratio, so it can never
+// represent less than the floor at this frame's total_extent) -- this is what
+// avoids a drag-reversal dead zone: the persisted value tracks the clamped
+// value live during interaction, so reversing direction after an overshoot
+// moves it immediately instead of needing to re-travel the overshoot first.
+// Idle frames (no active drag) never touch `ratio`, only the caller's own
+// clamp_ratio() call (used to size the region drawn just before this widget).
+// Returns true on exactly the frame the drag ends.
+static bool splitter(const char* id, float& ratio, float total_extent, bool horizontal) {
+    ImVec2 size = horizontal ? ImVec2(kSplitterThickness, -1.0f) : ImVec2(-1.0f, kSplitterThickness);
+    ImGui::InvisibleButton(id, size);
+
+    const bool hovered = ImGui::IsItemHovered();
+    const bool active = ImGui::IsItemActive();
+    if (hovered || active) {
+        ImGui::SetMouseCursor(horizontal ? ImGuiMouseCursor_ResizeEW : ImGuiMouseCursor_ResizeNS);
+    }
+
+    const ImGuiCol color =
+        active ? ImGuiCol_SeparatorActive : (hovered ? ImGuiCol_SeparatorHovered : ImGuiCol_Separator);
+    ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
+                                              ImGui::GetColorU32(color));
+
+    if (active) {
+        const float delta = horizontal ? ImGui::GetIO().MouseDelta.x : ImGui::GetIO().MouseDelta.y;
+        if (delta != 0.0f) {
+            ratio = clamp_ratio(ratio + delta / total_extent, total_extent);
+            // InvisibleButton doesn't call this internally the way Slider/Drag
+            // widgets do -- without it, IsItemDeactivatedAfterEdit() below never
+            // fires (ImGui only treats an item as "edited" if something marks
+            // it). imgui_internal.h is already vendored and included here for
+            // the DockBuilder API (woz_gui.cpp:6); confirm MarkItemEdited's
+            // signature against the pinned commit at implementation time.
+            ImGui::MarkItemEdited(ImGui::GetItemID());
+        }
+    }
+
+    return ImGui::IsItemDeactivatedAfterEdit();
+}
+
+// --- App ------------------------------------------------------------------------------------------------------------
 
 int main(int argc, char* argv[]) {
     using namespace gm;
@@ -181,14 +276,16 @@ int main(int argc, char* argv[]) {
 
     int64_t turn_number = 1;
     std::string wo_text = kBlankWorkOrderSkeleton;  // GM WorkOrder panel's editable submit buffer
-    std::optional<std::string> parse_error;   // set on a bad Submit, shown inline, cleared on next good Submit
-    std::vector<nlohmann::json> log_entries;  // one gm::log::LogEntry per process_turn call, see 4.5
-    int selected_entry = -1;                  // index into log_entries shown in the Log panel's detail pane
+    std::optional<std::string> parse_error;         // set on a bad Submit, shown inline, cleared on next good Submit
+    std::vector<nlohmann::json> log_entries;        // one gm::log::LogEntry per process_turn call, see 4.5
+    int selected_entry = -1;                        // index into log_entries shown in the Log panel's detail pane
 
     std::vector<std::string> saved_workorder_files;  // filenames under workorders/, scanned once at startup
     int selected_session_turn = -1;                  // index into log_entries currently previewed (WorkOrder panel)
     int selected_saved_file = -1;                    // index into saved_workorder_files currently previewed
     std::string wo_preview_text;                     // whichever of the above is selected, mutually exclusive
+
+    LayoutRatios layout = load_layout_or_default();
 
     bool session_over = false;
 
@@ -291,7 +388,10 @@ int main(int argc, char* argv[]) {
         // --- GM WorkOrder panel ------------------------------------------------------
         ImGui::Begin(kWorkOrderTitle);
 
-        ImGui::BeginChild("##WorkOrderList", ImVec2(220.0f, 0.0f), ImGuiChildFlags_Borders);
+        const float wo_panel_width = ImGui::GetContentRegionAvail().x;
+        const float sidebar_width = clamp_ratio(layout.sidebar, wo_panel_width) * wo_panel_width;
+
+        ImGui::BeginChild("##WorkOrderList", ImVec2(sidebar_width, 0.0f), ImGuiChildFlags_Borders);
         ImGui::SeparatorText("This Session");
         for (int i = static_cast<int>(log_entries.size()) - 1; i >= 0; --i) {
             bool is_selected = (selected_session_turn == i);
@@ -314,6 +414,12 @@ int main(int argc, char* argv[]) {
 
         ImGui::SameLine();
 
+        if (splitter("##SidebarSplit", layout.sidebar, wo_panel_width, /*horizontal=*/true)) {
+            save_layout(layout);
+        }
+
+        ImGui::SameLine();
+
         ImGui::BeginChild("##WorkOrderMain");
 
         bool has_preview = (selected_session_turn >= 0) || (selected_saved_file >= 0);
@@ -325,13 +431,21 @@ int main(int argc, char* argv[]) {
         }
         ImGui::EndDisabled();
 
-        ImGui::BeginChild("##WorkOrderPreview", ImVec2(0.0f, 120.0f), ImGuiChildFlags_Borders);
+        const float main_content_height = ImGui::GetContentRegionAvail().y;
+        const float preview_height = clamp_ratio(layout.preview, main_content_height) * main_content_height;
+
+        ImGui::BeginChild("##WorkOrderPreview", ImVec2(0.0f, preview_height), ImGuiChildFlags_Borders);
         ImGui::TextUnformatted(wo_preview_text.c_str());
         ImGui::EndChild();
 
+        if (splitter("##PreviewSplit", layout.preview, main_content_height, /*horizontal=*/false)) {
+            save_layout(layout);
+        }
+
         ImGui::Separator();
 
-        ImGui::InputTextMultiline("##WorkOrderEditor", wo_text_buf, sizeof(wo_text_buf), ImVec2(-1.0f, -60.0f));
+        const float footer_height = ImGui::GetFrameHeightWithSpacing() * 2.0f;
+        ImGui::InputTextMultiline("##WorkOrderEditor", wo_text_buf, sizeof(wo_text_buf), ImVec2(-1.0f, -footer_height));
         wo_text = wo_text_buf;
 
         const bool is_blank = trim(wo_text) == trim(kBlankWorkOrderSkeleton);
@@ -419,7 +533,10 @@ int main(int argc, char* argv[]) {
         // --- Log panel -----------------------------------------------------------
         ImGui::Begin(kLogTitle);
 
-        ImGui::BeginChild("##LogEntryList", ImVec2(0.0f, 150.0f), ImGuiChildFlags_Borders);
+        const float log_panel_height = ImGui::GetContentRegionAvail().y;
+        const float log_list_height = clamp_ratio(layout.log_list, log_panel_height) * log_panel_height;
+
+        ImGui::BeginChild("##LogEntryList", ImVec2(0.0f, log_list_height), ImGuiChildFlags_Borders);
         for (int i = 0; i < static_cast<int>(log_entries.size()); ++i) {
             bool is_selected = (selected_entry == i);
             if (ImGui::Selectable(entry_label(log_entries[static_cast<size_t>(i)]).c_str(), is_selected)) {
@@ -427,6 +544,10 @@ int main(int argc, char* argv[]) {
             }
         }
         ImGui::EndChild();
+
+        if (splitter("##LogListSplit", layout.log_list, log_panel_height, /*horizontal=*/false)) {
+            save_layout(layout);
+        }
 
         ImGui::BeginChild("##LogEntryDetail", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders);
         if (selected_entry >= 0 && selected_entry < static_cast<int>(log_entries.size())) {
