@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/woz-gui-qol.md` |
 | **Date** | 2026-07-14 |
-| **Status** | In Progress (2/4 phases done) |
+| **Status** | Done |
 | **Effort** | 1 session (four phases, one file — Splitters is the largest phase) |
 
 ---
@@ -120,7 +120,7 @@ After this ships, `woz_gui` closes the four friction points found running real E
 
 ---
 
-### Phase 3: Resizable, Persisted Splitters — Not Started
+### Phase 3: Resizable, Persisted Splitters — Done
 
 **Objective:** All three named fixed-size sub-splits get a draggable splitter bar with a shared minimum size; ratios persist across relaunches via `gui_layout.json`, with back-computed defaults on first launch or on any load/parse failure. Only Task 3.4 below depends on Phase 2; Tasks 3.1–3.3 and 3.5 don't touch the Reset/Save row and have no such dependency.
 
@@ -162,6 +162,8 @@ Given this phase is the hardest in the plan to verify by code inspection alone (
 **File:** `src/woz_gui.cpp` (uses Task 3.2's widget; no dependency on Phase 2)
 **Tag:** T3 — mechanical application of an already-built, already-tested widget to two structurally simple existing `BeginChild` pairs; touches a working file, so reviewed rather than delegated outright.
 
+**Actual:** T2 — the log-list splitter site needed two AI review passes to converge, past what "mechanical wiring" implies. First pass found a self-referencing uninitialized-variable read (`clamp_ratio(layout.log_list, log_list_height)` reading `log_list_height` in its own initializer instead of `log_panel_height` — silent UB, since the project builds without `-Wall`/`-Wextra`) and a splitter id colliding with the adjacent detail child window's id. The author's follow-up fixed both but left the `total_extent` argument wired to `log_list_height` instead of `log_panel_height`, which would have snapped the ratio to exactly 0.5 on the very first drag at default proportions (150/400 total_extent falls under the floor-clamp's small-extent branch); fixed directly by AI. The sidebar splitter site itself had no defects of its own beyond the shared `splitter()` widget's 1px sizing bug (Task 3.2's `Actual`-worthy catch, though within that task's own T2 expectations).
+
 **Changes:**
 - Replace `##WorkOrderList`'s literal `ImVec2(220.0f, 0.0f)` (`woz_gui.cpp:251`) with a width computed from `layout.sidebar * available_width`, followed by `if (splitter("##SidebarSplit", layout.sidebar, available_width, true)) save_layout(layout);`, followed by `##WorkOrderMain`'s existing `BeginChild` (already auto-sized).
 - Replace `##LogEntryList`'s literal `ImVec2(0.0f, 150.0f)` (`woz_gui.cpp:338`) with a height computed from `layout.log_list * available_height`, followed by the same splitter-then-save pattern, followed by `##LogEntryDetail`'s existing `BeginChild` (already auto-sized to `0,0`).
@@ -201,7 +203,7 @@ Given this phase is the hardest in the plan to verify by code inspection alone (
 
 ---
 
-### Phase 4: Live Saved-Group Refresh — Not Started
+### Phase 4: Live Saved-Group Refresh — Done
 
 **Objective:** The Saved group reflects `workorders/` exactly as it is on disk right now, on demand, without restarting `woz_gui`.
 
@@ -209,6 +211,8 @@ Given this phase is the hardest in the plan to verify by code inspection alone (
 
 **File:** `src/woz_gui.cpp`
 **Tag:** T3 — mechanical extraction of an existing loop into a function called from two sites, plus a straightforward new button handler; touches a working file, so reviewed rather than delegated outright.
+
+**Actual:** T2 — AI drafted and applied the implementation directly rather than the author typing it in for review. One real correctness bug was caught and fixed during drafting, before it was ever shown to the author: an early version reset `wo_preview_text` whenever `selected_saved_file` ended up `< 0` after a refresh, which doesn't distinguish "nothing selected" from "a This-Session entry is selected" (the two are mutually exclusive elsewhere in the file) — as written it would have wrongly clobbered a This-Session preview on every Refresh click. Fixed by gating the whole reconciliation block on `had_saved_selection`, captured before the rescan. Author confirmed all four Acceptance Criteria pass by hand against the built binary.
 
 **Changes:**
 - Extract the existing startup `workorders/` scan (`woz_gui.cpp:157-168`, the `fs::directory_iterator` loop wrapped in try/catch) into a function `std::vector<std::string> scan_workorders_dir()`, called once at startup (replacing the inline loop) and once from the new button's click handler.

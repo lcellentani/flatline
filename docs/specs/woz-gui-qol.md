@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Ready |
+| **Status** | Implemented |
 | **Date** | 2026-07-14 |
 | **Plan** | `docs/plans/woz-gui-qol.md` |
 | **Supersedes** | N/A |
