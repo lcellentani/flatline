@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/woz-gui-new-session.md` |
 | **Date** | 2026-07-20 |
-| **Status** | Not Started |
+| **Status** | In Progress (1/2 phases done) |
 | **Effort** | 1 session (two phases, one file plus `.gitignore`) |
 
 ---
@@ -44,7 +44,7 @@ After this ships, a GM can start a fresh session in `woz_gui` — reloading the 
 
 ## 2. Phased Task Breakdown
 
-### Phase 1: Per-Session Log File Naming — Not Started
+### Phase 1: Per-Session Log File Naming — Done
 
 **Objective:** Every session — including the very first one at process startup — gets its own uniquely-named, millisecond-timestamped log file, replacing the single fixed `kGuiLogPath` constant.
 

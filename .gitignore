@@ -11,7 +11,7 @@ compile_commands.json
 # Generated run/session logs (run artifacts, not source)
 woz_log.jsonl
 session_log.jsonl
-gui_session_log.jsonl
+gui_session_log*.jsonl
 gui_layout.json
 
 # Dear ImGui's persisted window/dock layout (per-user, not source)
