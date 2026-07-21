@@ -8,6 +8,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -33,9 +35,20 @@ constexpr const char* kRoomDescriptionTitle = "Room Description";
 constexpr const char* kWorkOrderTitle = "GM WorkOrder";
 constexpr const char* kLogTitle = "Log";
 
-// Own session log per front end (woz_loop's is session_log.jsonl, the demo's is
-// woz_log.jsonl) -- never interleaved.
-constexpr const char* kGuiLogPath = "gui_session_log.jsonl";
+static std::string generate_session_log_path() {
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t seconds = std::chrono::system_clock::to_time_t(now);
+    const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
+
+    std::tm local_tm{};
+    localtime_s(&local_tm, &seconds);
+
+    char path[64];
+    snprintf(path, sizeof(path), "gui_session_log-%04d%02d%02d-%02d%02d%02d-%03lld.jsonl", local_tm.tm_year + 1900,
+             local_tm.tm_mon + 1, local_tm.tm_mday, local_tm.tm_hour, local_tm.tm_min, local_tm.tm_sec,
+             static_cast<long long>(millis));
+    return path;
+}
 
 // InputTextMultiline needs a raw, fixed-capacity buffer (imgui_stdlib.h's std::string
 // convenience wrapper isn't vendored -- see Task 3.1's file list); wo_text stays the
@@ -305,6 +318,8 @@ int main(int argc, char* argv[]) {
     int selected_saved_file = -1;                    // index into saved_workorder_files currently previewed
     std::string wo_preview_text;                     // whichever of the above is selected, mutually exclusive
 
+    std::string log_path = generate_session_log_path();
+
     LayoutRatios layout = load_layout_or_default();
 
     bool session_over = false;
@@ -313,7 +328,6 @@ int main(int argc, char* argv[]) {
     snprintf(wo_text_buf, sizeof(wo_text_buf), "%s", wo_text.c_str());
 
     std::string save_filename;
-
     char save_filename_buf[kSaveFileNameBufSize];
     snprintf(save_filename_buf, sizeof(save_filename_buf), "%s", save_filename.c_str());
 
@@ -487,10 +501,10 @@ int main(int argc, char* argv[]) {
         if (ImGui::Button("Submit Turn")) {
             try {
                 WorkOrder wo = parse_work_order(wo_text);
-                auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, kGuiLogPath);
+                auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, log_path);
 
                 // Same LogEntry process_turn already built internally to append to
-                // kGuiLogPath -- reconstructed here from values already in scope, then
+                // log_path -- reconstructed here from values already in scope, then
                 // serialized via gm_log.hpp's existing to_json, so the GUI's copy and
                 // the on-disk line are guaranteed structurally identical.
                 log_entries.push_back(nlohmann::json(log::LogEntry{turn_number, wo, outcome}));
