@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/woz-gui-new-session.md` |
 | **Date** | 2026-07-20 |
-| **Status** | In Progress (1/2 phases done) |
+| **Status** | Done (2/2 phases done) |
 | **Effort** | 1 session (two phases, one file plus `.gitignore`) |
 
 ---
@@ -81,7 +81,7 @@ After this ships, a GM can start a fresh session in `woz_gui` — reloading the 
 
 ---
 
-### Phase 2: New Session Button — Not Started
+### Phase 2: New Session Button — Done
 
 **Objective:** A GM can reset to a fresh session at any time, in one click, with the current session left completely untouched if the room file fails to reload.
 

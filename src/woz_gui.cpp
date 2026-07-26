@@ -310,8 +310,15 @@ int main(int argc, char* argv[]) {
     int64_t turn_number = 1;
     std::string wo_text = kBlankWorkOrderSkeleton;  // GM WorkOrder panel's editable submit buffer
     std::optional<std::string> parse_error;         // set on a bad Submit, shown inline, cleared on next good Submit
-    std::vector<nlohmann::json> log_entries;        // one gm::log::LogEntry per process_turn call, see 4.5
-    int selected_entry = -1;                        // index into log_entries shown in the Log panel's detail pane
+
+    // Deliberately separate from parse_error: this one is owned and rendered by the Room
+    // Description panel, so sharing parse_error would either show a reload failure in the
+    // wrong window or let the WorkOrder panel's Submit/Save handlers clobber it later in
+    // the same frame. Only New Session ever reads or writes it.
+    std::optional<std::string> room_reload_error;
+
+    std::vector<nlohmann::json> log_entries;  // one gm::log::LogEntry per process_turn call, see 4.5
+    int selected_entry = -1;                  // index into log_entries shown in the Log panel's detail pane
 
     std::vector<std::string> saved_workorder_files;  // filenames under workorders/, populated at startup + Refresh
     int selected_session_turn = -1;                  // index into log_entries currently previewed (WorkOrder panel)
@@ -399,10 +406,57 @@ int main(int argc, char* argv[]) {
 
         // --- Room Description panel -----------------------------------------------
         ImGui::Begin(kRoomDescriptionTitle);
+
+        // Always enabled, unlike Submit -- New Session must work mid-session too, and it
+        // renders above the banner/error so a growing message can never push it offscreen.
+        if (ImGui::Button("New Session")) {
+            try {
+                // Reload into a local first: the reset below is one atomic commit, so a
+                // bad room file on disk leaves the live session completely untouched --
+                // same "parse before mutate" shape as Submit's and Save's handlers.
+                World reloaded = parse_world(slurp(room_path));
+
+                world = reloaded;
+                turn_number = 1;
+                session_over = false;
+
+                log_entries.clear();
+                selected_entry = -1;
+
+                // wo_preview_text is shared by both selections; it's stale only if the
+                // This-Session one was live. A Saved-entry preview still reflects an
+                // on-disk file New Session never touches, so it survives untouched --
+                // as does selected_saved_file, which no line here assigns.
+                const bool had_session_selection = selected_session_turn >= 0;
+                selected_session_turn = -1;
+                if (had_session_selection) {
+                    wo_preview_text.clear();
+                }
+
+                wo_text = kBlankWorkOrderSkeleton;
+                snprintf(wo_text_buf, sizeof(wo_text_buf), "%s", wo_text.c_str());
+
+                save_filename.clear();
+                save_filename_buf[0] = '\0';
+
+                parse_error.reset();
+
+                log_path = generate_session_log_path();
+                room_reload_error.reset();
+            } catch (const std::exception& ex) {
+                room_reload_error = ex.what();  // world/turn_number/log_entries/log_path untouched
+            }
+        }
+
         if (session_over) {
             ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "SESSION OVER: player is dead");
             ImGui::Separator();
         }
+
+        if (room_reload_error) {
+            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "%s", room_reload_error->c_str());
+        }
+
         ImGui::BeginChild("##RoomDescriptionScroll");
         ImGui::TextUnformatted(dump(world).c_str());
         ImGui::EndChild();
