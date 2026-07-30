@@ -56,6 +56,7 @@ static std::string generate_session_log_path() {
 // this buffer on every programmatic change (Submit reset, Load into editor) and read
 // back from it once per frame right after the widget renders.
 constexpr size_t kWorkOrderBufSize = 16384;
+constexpr size_t kPlayerInputBufSize = 512;
 
 constexpr size_t kSaveFileNameBufSize = 256;
 
@@ -311,6 +312,8 @@ int main(int argc, char* argv[]) {
     std::string wo_text = kBlankWorkOrderSkeleton;  // GM WorkOrder panel's editable submit buffer
     std::optional<std::string> parse_error;         // set on a bad Submit, shown inline, cleared on next good Submit
 
+    std::string player_input;
+
     // Deliberately separate from parse_error: this one is owned and rendered by the Room
     // Description panel, so sharing parse_error would either show a reload failure in the
     // wrong window or let the WorkOrder panel's Submit/Save handlers clobber it later in
@@ -333,6 +336,9 @@ int main(int argc, char* argv[]) {
 
     char wo_text_buf[kWorkOrderBufSize];
     snprintf(wo_text_buf, sizeof(wo_text_buf), "%s", wo_text.c_str());
+
+    char player_input_buf[kPlayerInputBufSize];
+    snprintf(player_input_buf, sizeof(player_input_buf), "%s", player_input.c_str());
 
     std::string save_filename;
     char save_filename_buf[kSaveFileNameBufSize];
@@ -435,6 +441,8 @@ int main(int argc, char* argv[]) {
 
                 wo_text = kBlankWorkOrderSkeleton;
                 snprintf(wo_text_buf, sizeof(wo_text_buf), "%s", wo_text.c_str());
+                player_input.clear();
+                player_input_buf[0] = '\0';
 
                 save_filename.clear();
                 save_filename_buf[0] = '\0';
@@ -546,6 +554,12 @@ int main(int argc, char* argv[]) {
         ImGui::Separator();
 
         const float footer_height = ImGui::GetFrameHeightWithSpacing() * 2.0f;
+
+        ImGui::Text("Player action:");
+        ImGui::SameLine();
+        ImGui::InputText("##PlayerInput", player_input_buf, sizeof(player_input_buf));
+        player_input = player_input_buf;
+
         ImGui::InputTextMultiline("##WorkOrderEditor", wo_text_buf, sizeof(wo_text_buf), ImVec2(-1.0f, -footer_height));
         wo_text = wo_text_buf;
 
@@ -555,15 +569,13 @@ int main(int argc, char* argv[]) {
         if (ImGui::Button("Submit Turn")) {
             try {
                 WorkOrder wo = parse_work_order(wo_text);
-                // TODO(phase2): pass the panel's captured player input here --
-                // this front end is the one that actually collects it.
-                auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, log_path, "");
+                auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, log_path, player_input);
 
                 // Same LogEntry process_turn already built internally to append to
                 // log_path -- reconstructed here from values already in scope, then
                 // serialized via gm_log.hpp's existing to_json, so the GUI's copy and
                 // the on-disk line are guaranteed structurally identical.
-                log_entries.push_back(nlohmann::json(log::LogEntry{turn_number, wo, outcome}));
+                log_entries.push_back(nlohmann::json(log::LogEntry{turn_number, wo, outcome, player_input}));
                 selected_entry = static_cast<int>(log_entries.size()) - 1;
 
                 world = world_after;
@@ -571,6 +583,8 @@ int main(int argc, char* argv[]) {
                 parse_error.reset();
                 wo_text = kBlankWorkOrderSkeleton;
                 snprintf(wo_text_buf, sizeof(wo_text_buf), "%s", wo_text.c_str());
+                player_input.clear();
+                player_input_buf[0] = '\0';
 
                 if (std::holds_alternative<log::Applied>(outcome) && rules::session_over(world)) {
                     session_over = true;
@@ -587,6 +601,8 @@ int main(int argc, char* argv[]) {
         if (ImGui::Button("Reset")) {
             wo_text = kBlankWorkOrderSkeleton;
             snprintf(wo_text_buf, sizeof(wo_text_buf), "%s", wo_text.c_str());
+            player_input.clear();
+            player_input_buf[0] = '\0';
         }
         ImGui::EndDisabled();
 
