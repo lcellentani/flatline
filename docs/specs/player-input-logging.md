@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Ready |
+| **Status** | Implemented |
 | **Date** | 2026-07-30 |
-| **Plan** | `docs/plans/player-input-logging.md` (In Progress — Phase 1 Done, Phase 2 Not Started) |
+| **Plan** | `docs/plans/player-input-logging.md` (Done — 2/2 phases done) |
 | **Supersedes** | N/A |
 
 ---
@@ -49,7 +49,7 @@ The replay log stores the `WorkOrder`'s `interpretation` field as the only recor
 
 ## 5. Open Questions
 
-- [x] Exact field placement and label text in the GM WorkOrder panel (e.g. single-line vs. short multiline `InputText`) — cosmetic, owned by the plan's Phase 2 Task 2.1 (tagged `T2` there precisely because it's the one real taste call in this feature). Non-blocking: Phase 1 shipped without it.
+- [x] Exact field placement and label text in the GM WorkOrder panel — resolved in Phase 2 Task 2.1: a single-line `InputText` labeled "Player action:", inline above the WorkOrder JSON editor.
 
 ---
 

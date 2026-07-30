@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/player-input-logging.md` |
 | **Date** | 2026-07-30 |
-| **Status** | In Progress (1/2 phases done) |
+| **Status** | Done (2/2 phases done) |
 | **Effort** | 1 session |
 
 ---
@@ -106,7 +106,7 @@ Every `gm::log::LogEntry` carries a `player_input` field with the raw text the G
 
 ---
 
-### Phase 2: `woz_gui.cpp` inline capture field — Not Started
+### Phase 2: `woz_gui.cpp` inline capture field — Done
 
 **Objective:** The GM WorkOrder panel has a working inline field that captures the player's raw words and carries them into the logged entry, with a lifecycle matching `wo_text`'s existing reset points.
 
