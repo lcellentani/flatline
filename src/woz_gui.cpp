@@ -555,7 +555,9 @@ int main(int argc, char* argv[]) {
         if (ImGui::Button("Submit Turn")) {
             try {
                 WorkOrder wo = parse_work_order(wo_text);
-                auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, log_path);
+                // TODO(phase2): pass the panel's captured player input here --
+                // this front end is the one that actually collects it.
+                auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, log_path, "");
 
                 // Same LogEntry process_turn already built internally to append to
                 // log_path -- reconstructed here from values already in scope, then

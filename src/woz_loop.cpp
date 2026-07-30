@@ -114,7 +114,9 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, kLogPath);
+        // No raw-input capture in this CLI front end (the GUI is the live
+        // Experiment-1 tool) -- the log entry records an empty player_input.
+        auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, kLogPath, "");
         print_outcome(wo, world, world_after, outcome);
         world = world_after;
 

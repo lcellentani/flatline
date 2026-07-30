@@ -80,7 +80,8 @@ int main() {
     // narration from the returned Outcome, since process_turn itself does
     // no I/O (that's what keeps it reusable by woz_loop/woz_gui later).
     const int64_t turn_number = 1;
-    auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, kLogPath);
+    // Single hardcoded turn, no live player -- player_input is empty.
+    auto [world_after, outcome] = turn::process_turn(world, turn_number, wo, kLogPath, "");
 
     if (auto* budget_failure = std::get_if<log::ModifierBudgetRejected>(&outcome)) {
         std::cout << "=== MODIFIER BUDGET ===\nREJECTED: " << budget_failure->reason << "\n\n";

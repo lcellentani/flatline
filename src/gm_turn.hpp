@@ -32,15 +32,19 @@
 
 namespace gm::turn {
 
+// player_input is the player's raw words as the GM received them, recorded on
+// the log entry and read by nothing else in the pipeline (see the field's own
+// comment in gm_log.hpp). Callers with no raw input to record -- scripted
+// demos, tests -- pass "".
 inline std::pair<World, log::Outcome> process_turn(const World& world, int64_t turn_number, const WorkOrder& wo,
-                                                   const std::string& log_path) {
+                                                   const std::string& log_path, const std::string& player_input) {
     // [MODIFIER BUDGET] -- must run before the roll (see gm_rules.hpp's
     // kModifierBudget comment): an unbounded modifier list could otherwise
     // force the roll's outcome regardless of what the die shows.
     if (auto budget_failure = gauntlet::validate_modifiers(wo.modifiers)) {
         log::Outcome outcome =
             log::ModifierBudgetRejected{budget_failure->magnitude_sum, budget_failure->budget, budget_failure->reason};
-        log::append_to_file(log_path, log::LogEntry{turn_number, wo, outcome});
+        log::append_to_file(log_path, log::LogEntry{turn_number, wo, outcome, player_input});
         return {world, outcome};
     }
 
@@ -69,7 +73,7 @@ inline std::pair<World, log::Outcome> process_turn(const World& world, int64_t t
         World world_after = applier::apply(world, *applied);
         log::Outcome outcome = log::Applied{roll_info, *applied,    selected_narration,
                                             world,     world_after, applier::vital_transitions(world, *applied)};
-        log::append_to_file(log_path, log::LogEntry{turn_number, wo, outcome});
+        log::append_to_file(log_path, log::LogEntry{turn_number, wo, outcome, player_input});
         return {world_after, outcome};
     }
 
@@ -77,7 +81,7 @@ inline std::pair<World, log::Outcome> process_turn(const World& world, int64_t t
     const auto& f = std::get<gauntlet::Failure>(gauntlet_result);
     log::Outcome outcome = log::GauntletRejected{roll_info, f.effect_index, gauntlet::stage_name(f.stage), f.reason,
                                                  f.conflicting_with_index};
-    log::append_to_file(log_path, log::LogEntry{turn_number, wo, outcome});
+    log::append_to_file(log_path, log::LogEntry{turn_number, wo, outcome, player_input});
     return {world, outcome};
 }
 

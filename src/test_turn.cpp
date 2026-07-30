@@ -9,6 +9,9 @@
 //   - the hallucination worked example -> GauntletRejected at the same
 //     stage/index a directly-run gauntlet call reports, World unchanged
 //   - exactly one log line appended per call, across all three outcome kinds
+//   - player_input reaches the log on ALL three outcome kinds (a rejected
+//     turn is still benchmark-grade scenario data), and an empty input
+//     round-trips as empty
 //
 // Build: g++ -std=c++20 -I. -I<path-to-nlohmann> -Wall -Wextra test_turn.cpp -o test_turn
 
@@ -55,7 +58,7 @@ int main() {
     // --- 1. bribe -> Applied, matches an independently-run pipeline --------
     {
         WorkOrder wo = parse_work_order(slurp("workorder_bribe.json"));
-        auto [world_after, outcome] = turn::process_turn(room, /*turn_number=*/1, wo, kScratchLog);
+        auto [world_after, outcome] = turn::process_turn(room, /*turn_number=*/1, wo, kScratchLog, "");
 
         auto* applied = std::get_if<log::Applied>(&outcome);
         check(applied != nullptr, "bribe: outcome is Applied");
@@ -85,7 +88,7 @@ int main() {
     // --- 2. hallucinated -> GauntletRejected at the same stage/index, World unchanged ---
     {
         WorkOrder wo = parse_work_order(slurp("workorder_hallucinated.json"));
-        auto [world_after, outcome] = turn::process_turn(room, /*turn_number=*/2, wo, kScratchLog);
+        auto [world_after, outcome] = turn::process_turn(room, /*turn_number=*/2, wo, kScratchLog, "");
 
         auto* rejected = std::get_if<log::GauntletRejected>(&outcome);
         check(rejected != nullptr, "hallucinated: outcome is GauntletRejected");
@@ -104,25 +107,56 @@ int main() {
     }
 
     // --- 3. exactly one log line appended per call, for every outcome kind ---
+    //        Each call also passes a DISTINCT player_input so the same three
+    //        calls prove the raw input reaches the log on every outcome
+    //        branch, not just the Applied one -- a benchmark harvest that
+    //        silently dropped it on rejected turns would still pass a
+    //        count-only check.
     {
         std::remove(kScratchLog);
         WorkOrder bribe = parse_work_order(slurp("workorder_bribe.json"));
         WorkOrder halluc = parse_work_order(slurp("workorder_hallucinated.json"));
 
-        turn::process_turn(room, 1, bribe, kScratchLog);
+        const std::string applied_input = "I slip the guard twenty gold";
+        const std::string rejected_input = "I unlock the door with the silver key";
+        const std::string budget_input = "I do something impossibly clever";
+
+        turn::process_turn(room, 1, bribe, kScratchLog, applied_input);
         check(log::read_log(kScratchLog).size() == 1, "log: exactly one entry after first call (Applied)");
 
-        turn::process_turn(room, 2, halluc, kScratchLog);
+        turn::process_turn(room, 2, halluc, kScratchLog, rejected_input);
         check(log::read_log(kScratchLog).size() == 2,
               "log: exactly one MORE entry after second call (GauntletRejected)");
 
         WorkOrder over_budget = bribe;
         over_budget.modifiers = {{"too_much", 100}};
-        turn::process_turn(room, 3, over_budget, kScratchLog);
+        turn::process_turn(room, 3, over_budget, kScratchLog, budget_input);
         auto after_three = log::read_log(kScratchLog);
         check(after_three.size() == 3, "log: exactly one MORE entry after third call (ModifierBudgetRejected)");
         check(std::holds_alternative<log::ModifierBudgetRejected>(after_three.back().outcome),
               "log: third entry's outcome is ModifierBudgetRejected");
+
+        check(after_three[0].player_input == applied_input,
+              "player_input: reaches the log on an Applied turn, through the file round-trip");
+        check(after_three[1].player_input == rejected_input,
+              "player_input: reaches the log on a GauntletRejected turn");
+        check(after_three[2].player_input == budget_input,
+              "player_input: reaches the log on a ModifierBudgetRejected turn");
+
+        std::remove(kScratchLog);
+    }
+
+    // --- 4. an empty player_input round-trips as empty, not as garbage -----
+    //        (the demo/CLI front ends pass "" on every turn -- this is their
+    //        path, and it must not throw or invent a value)
+    {
+        std::remove(kScratchLog);
+        WorkOrder bribe = parse_work_order(slurp("workorder_bribe.json"));
+
+        turn::process_turn(room, 1, bribe, kScratchLog, "");
+        auto entries = log::read_log(kScratchLog);
+        check(entries.size() == 1 && entries[0].player_input.empty(),
+              "player_input: an empty input logs and reads back as empty");
 
         std::remove(kScratchLog);
     }

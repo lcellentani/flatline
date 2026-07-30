@@ -15,6 +15,10 @@
 //   - append_to_file / read_log: JSONL round-trip across multiple entries,
 //     including that append is genuinely additive (doesn't clobber prior
 //     lines)
+//   - player_input: a non-empty value round-trips verbatim and stays
+//     distinct from work_order.interpretation, an uncaptured turn writes
+//     "" rather than omitting the key, and a log line predating the field
+//     still parses with it defaulting to empty
 //   - Applied.vital_transitions: JSON round-trip for a non-empty case (the
 //     ADL-reopened VitalTransition serializer, gm_log.hpp, same pattern
 //     already used for RollResult and already burned once on this exact
@@ -290,6 +294,47 @@ int main() {
         json j = entry;
         check(j.contains("vital_transitions") && j["vital_transitions"].is_array() && j["vital_transitions"].empty(),
               "Applied JSON: vital_transitions present as an empty array, not omitted, on a non-combat turn");
+    }
+
+    // --- 10. player_input: round-trips, and is tolerant of omission --------
+    //         The benchmark's real input is (pre-state, the player's raw
+    //         words); interpretation is the GM's paraphrase, so this field
+    //         is the one that must survive the log verbatim.
+    {
+        // 10a. a non-empty value survives dump -> parse unchanged
+        log::LogEntry entry = build_applied_entry(world, 9);
+        entry.player_input = "I slip the guard twenty gold and ask about the north door";
+
+        std::string dumped = json(entry).dump();
+        log::LogEntry parsed = json::parse(dumped).get<log::LogEntry>();
+        check(parsed.player_input == entry.player_input,
+              "player_input: non-empty value round-trips through dump/parse verbatim");
+        check(parsed.player_input != parsed.work_order.interpretation,
+              "player_input: stays distinct from work_order.interpretation (not collapsed into it)");
+
+        // 10b. present as "" rather than omitted on a turn with no raw input
+        // -- the same present-as-empty contract vital_transitions has ([] not
+        // omitted), so a reader can tell "captured, empty" from "predates the
+        // field".
+        log::LogEntry no_input = build_applied_entry(world, 10);
+        json j_empty = no_input;
+        check(j_empty.contains("player_input") && j_empty["player_input"].is_string() &&
+                  j_empty["player_input"].get<std::string>().empty(),
+              "player_input: present as an empty string, not omitted, when nothing was captured");
+        check(json::parse(j_empty.dump()).get<log::LogEntry>().player_input.empty(),
+              "player_input: an explicitly-empty value round-trips as empty");
+
+        // 10c. a log line written before this field existed still parses,
+        // defaulting to empty rather than throwing -- same tolerance already
+        // proven for conflicting_with_index in case 5d.
+        json j_old = j_empty;
+        j_old.erase("player_input");
+        log::LogEntry parsed_old = j_old.get<log::LogEntry>();
+        check(parsed_old.player_input.empty(),
+              "player_input: pre-existing log line without the field parses, defaults to empty");
+        check(
+            parsed_old.turn_number == no_input.turn_number && std::holds_alternative<log::Applied>(parsed_old.outcome),
+            "player_input: the rest of a pre-existing entry is unaffected by the missing field");
     }
 
     std::cout << "\n" << g_pass << " passed, " << g_fail << " failed\n";

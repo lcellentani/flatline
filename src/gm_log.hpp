@@ -153,6 +153,14 @@ struct LogEntry {
     int64_t turn_number;
     WorkOrder work_order;  // raw — reuses gm_json.hpp's existing to_json/from_json verbatim
     Outcome outcome;
+    // The player's raw words, as the GM received them — NOT work_order's
+    // interpretation, which is the GM's own paraphrase authored afterwards.
+    // Kept here rather than on WorkOrder deliberately: it's a record of how
+    // the turn was produced, never an input the gauntlet/roll/applier read,
+    // and putting it on WorkOrder would perturb gm_roll.hpp's seed material.
+    // Empty when no raw input was captured (scripted/demo turns, and every
+    // line logged before this field existed).
+    std::string player_input;
 };
 
 // ---------------------------------------------------------------------
@@ -252,6 +260,11 @@ inline void to_json(json& j, const LogEntry& e) {
     j = json::object();
     j["turn_number"] = e.turn_number;
     j["work_order"] = e.work_order;
+    // Always written, even when empty — an explicit "" says the turn was
+    // captured with no raw input, which a reader can tell apart from an
+    // absent key (a line predating the field). Same present-as-empty
+    // reasoning as Applied::vital_transitions' [].
+    j["player_input"] = e.player_input;
     // Flatten the outcome's fields onto the entry rather than nesting under
     // an "outcome" key — keeps one status-tagged JSON object per line
     // instead of an object-within-an-object, cheaper to grep/skim on disk.
@@ -262,6 +275,8 @@ inline void to_json(json& j, const LogEntry& e) {
 inline void from_json(const json& j, LogEntry& e) {
     j.at("turn_number").get_to(e.turn_number);
     j.at("work_order").get_to(e.work_order);
+    // Tolerant of omission: logs written before this field existed still parse.
+    e.player_input = j.value("player_input", std::string{});
     j.get_to(e.outcome);  // Outcome::from_json reads "status" off the same flattened object
 }
 
