@@ -243,25 +243,25 @@ Given this phase is the hardest in the plan to verify by code inspection alone (
 ## 4. Validation Checklist
 
 ### Functional
-- [ ] Submit is disabled against an untouched blank buffer and re-enables on any edit or load (Phase 1).
-- [ ] Reset clears the buffer to blank in one click, disabled only when there's nothing to clear (Phase 2).
-- [ ] Save writes a valid, uniquely, validly-named buffer to `workorders/` and it appears in the Saved group immediately (Phase 2).
-- [ ] Save refuses and shows an inline error, writing nothing, for: malformed JSON, filename collision, filename outside `[A-Za-z0-9_-]` (Phase 2).
-- [ ] All three splitters drag-resize live and persist their ratio across a close/relaunch cycle (Phase 3).
-- [ ] All three splitters stop at the 120px floor on both sides, with no drag-reversal dead zone after overshooting it (Phase 3).
-- [ ] First launch (no `gui_layout.json`) and a launch against a hand-corrupted `gui_layout.json` both render identically to today's pre-spec baseline sizes (Phase 3).
-- [ ] Refresh picks up externally added/removed `workorders/*.json` files with no restart, clearing selection/preview only if the selected entry was removed (Phase 4).
+- [x] Submit is disabled against an untouched blank buffer and re-enables on any edit or load (Phase 1).
+- [x] Reset clears the buffer to blank in one click, disabled only when there's nothing to clear (Phase 2).
+- [x] Save writes a valid, uniquely, validly-named buffer to `workorders/` and it appears in the Saved group immediately (Phase 2).
+- [x] Save refuses and shows an inline error, writing nothing, for: malformed JSON, filename collision, filename outside `[A-Za-z0-9_-]` (Phase 2).
+- [x] All three splitters drag-resize live and persist their ratio across a close/relaunch cycle (Phase 3).
+- [x] All three splitters stop at the 120px floor on both sides, with no drag-reversal dead zone after overshooting it (Phase 3).
+- [x] First launch (no `gui_layout.json`) and a launch against a hand-corrupted `gui_layout.json` both render identically to today's pre-spec baseline sizes (Phase 3).
+- [x] Refresh picks up externally added/removed `workorders/*.json` files with no restart, clearing selection/preview only if the selected entry was removed (Phase 4).
 
 ### Integration
-- [ ] Reset and Save remain usable after the session-over banner appears; only Submit freezes (Phases 1–2).
-- [ ] The editor's footer height never visibly jumps when `parse_error` appears/clears (Phase 3).
-- [ ] A floored splitter (window shrunk smaller than the stored ratio would need) restores its original proportions when the window grows back, rather than staying distorted (Phase 3).
-- [ ] `git status` stays clean after normal use — `gui_layout.json`/`gui_session_log.jsonl` never show as untracked (Phase 3).
+- [x] Reset and Save remain usable after the session-over banner appears; only Submit freezes (Phases 1–2).
+- [x] The editor's footer height never visibly jumps when `parse_error` appears/clears (Phase 3).
+- [x] A floored splitter (window shrunk smaller than the stored ratio would need) restores its original proportions when the window grows back, rather than staying distorted (Phase 3).
+- [x] `git status` stays clean after normal use — `gui_layout.json`/`gui_session_log.jsonl` never show as untracked (Phase 3).
 
 ### Regression
-- [ ] All five existing test suites (`test_gauntlet`, `test_log`, `test_applier`, `test_roll`, `test_turn`) pass unchanged — this plan touches no header they cover.
-- [ ] `woz` and `woz_loop` remain unaffected — this plan touches only `woz_gui.cpp`.
-- [ ] Submitting a valid WorkOrder still advances the turn exactly as before (Task 3.4's footer-constant change must not alter Submit's actual behavior, only its layout).
+- [x] All five existing test suites (`test_gauntlet`, `test_log`, `test_applier`, `test_roll`, `test_turn`) pass unchanged — this plan touches no header they cover.
+- [x] `woz` and `woz_loop` remain unaffected — this plan touches only `woz_gui.cpp`.
+- [x] Submitting a valid WorkOrder still advances the turn exactly as before (Task 3.4's footer-constant change must not alter Submit's actual behavior, only its layout).
 
 ---
 

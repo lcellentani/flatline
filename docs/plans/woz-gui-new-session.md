@@ -153,9 +153,9 @@ After this ships, a GM can start a fresh session in `woz_gui` — reloading the 
 - [ ] `git status` stays clean after normal use — generated `gui_session_log-*.jsonl` files never show as untracked (Phase 1).
 
 ### Regression
-- [ ] All five existing test suites (`test_gauntlet`, `test_log`, `test_applier`, `test_roll`, `test_turn`) pass unchanged — this plan touches no header they cover.
-- [ ] `woz` and `woz_loop` remain unaffected — this plan touches only `woz_gui.cpp` and `.gitignore`.
-- [ ] Submitting a valid WorkOrder still advances the turn and appends to the log exactly as before, just under the new generated filename (Phase 1).
+- [x] All five existing test suites (`test_gauntlet`, `test_log`, `test_applier`, `test_roll`, `test_turn`) pass unchanged — this plan touches no header they cover.
+- [x] `woz` and `woz_loop` remain unaffected — this plan touches only `woz_gui.cpp` and `.gitignore`.
+- [x] Submitting a valid WorkOrder still advances the turn and appends to the log exactly as before, just under the new generated filename (Phase 1).
 
 ---
 
