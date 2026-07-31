@@ -33,10 +33,10 @@ This document is the bridge between conversation-level exploration and the `/spe
 
 | Field | Value |
 |---|---|
-| **Status** | Not Started |
+| **Status** | In Progress |
 | **Method** | Evidence audit (replay logs + first-hand session experience) + discussion |
 | **Feeds into** | Go/no-go for the whole E2 program; `llm-game-master.md` update; DD-2's template set; DD-7's scenario source |
-| **Depends on** | Nothing — start immediately |
+| **Depends on** | A sufficient Experiment-1 corpus (see Immediate Action #2 in §6) — session-log-13 found the current corpus (one 25-turn 2026-07-18 session, predating `player_input` capture, plus a handful of 1–3-turn stragglers) too thin to run the audit on |
 
 **Driving questions**
 - [ ] For every logged Experiment-1 turn: would a Tier-0/1 handler (see DD-2) have resolved it identically, or did it genuinely need a GM? Where does the *fun* cluster — in the un-templatable residue, or spread across everything?
