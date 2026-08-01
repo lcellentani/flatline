@@ -1,0 +1,19 @@
+{
+  "interpretation": "Player offers the oil flask plus 5 gold instead of a full purse of coin.",
+  "ruling": "partial",
+  "modifiers": [
+    { "label": "bribable", "value": 2 },
+    { "label": "oil flask sweetens a lighter purse", "value": 2 }
+  ],
+  "effects_on_success": [
+    { "type": "modify_resource", "actor": "player", "resource": "gold", "delta": -5 },
+    { "type": "transfer_item", "item": "oil_flask", "from": "player", "to": "guard_01" },
+    { "type": "transfer_item", "item": "key_north", "from": "guard_01", "to": "player" },
+    { "type": "modify_disposition", "entity": "guard_01", "delta": 1 }
+  ],
+  "narration_on_success": "He turns the flask over in his hands, decides good lamp oil's worth more than his pride, and tosses you the key.",
+  "effects_on_failure": [
+    { "type": "modify_disposition", "entity": "guard_01", "delta": -1 }
+  ],
+  "narration_on_failure": "\"Keep your oil. I want real coin or nothing.\""
+}

@@ -18,8 +18,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(FLATLINE_JSON_FIXTURES
     ${CMAKE_SOURCE_DIR}/res/room_guardroom.json
     ${CMAKE_SOURCE_DIR}/res/workorder_bribe.json
+    ${CMAKE_SOURCE_DIR}/res/workorder_bribe-goods.json
+    ${CMAKE_SOURCE_DIR}/res/workorder_bribe-second-attempt.json
     ${CMAKE_SOURCE_DIR}/res/workorder_burn-door.json
     ${CMAKE_SOURCE_DIR}/res/workorder_hallucinated.json
+    ${CMAKE_SOURCE_DIR}/res/workorder_heist-distract.json
+    ${CMAKE_SOURCE_DIR}/res/workorder_heist-steal-key.json
     ${CMAKE_SOURCE_DIR}/res/workorder_lethal-smoke.json
     ${CMAKE_SOURCE_DIR}/res/workorder_open-door.json
     ${CMAKE_SOURCE_DIR}/res/workorder_push-guard.json

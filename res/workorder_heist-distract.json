@@ -1,0 +1,17 @@
+{
+  "interpretation": "Player offers the guard 10 gold to step away and look the other way for a few minutes.",
+  "ruling": "partial",
+  "modifiers": [
+    { "label": "bribable", "value": 2 },
+    { "label": "modest ask, doesn't cost him the post", "value": 2 }
+  ],
+  "effects_on_success": [
+    { "type": "modify_resource", "actor": "player", "resource": "gold", "delta": -10 },
+    { "type": "modify_disposition", "entity": "guard_01", "delta": 1 }
+  ],
+  "narration_on_success": "He palms the coin, mutters something about needing the privy, and turns his back on the door.",
+  "effects_on_failure": [
+    { "type": "modify_disposition", "entity": "guard_01", "delta": -1 }
+  ],
+  "narration_on_failure": "\"Nice try. I don't leave posts for coin like that.\""
+}

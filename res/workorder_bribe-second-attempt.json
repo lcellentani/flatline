@@ -1,0 +1,17 @@
+{
+  "interpretation": "Player offers the guard the same 15 gold again after he refused it once.",
+  "ruling": "partial",
+  "modifiers": [
+    { "label": "guard still stinging from the earlier insult", "value": -3 },
+    { "label": "bribable at heart", "value": 1 }
+  ],
+  "effects_on_success": [
+    { "type": "modify_resource", "actor": "player", "resource": "gold", "delta": -15 },
+    { "type": "transfer_item", "item": "key_north", "from": "guard_01", "to": "player" }
+  ],
+  "narration_on_success": "He exhales hard through his nose, snatches the coin, and drops the key in your palm without meeting your eyes.",
+  "effects_on_failure": [
+    { "type": "modify_disposition", "entity": "guard_01", "delta": -1 }
+  ],
+  "narration_on_failure": "He goes rigid, hand drifting to his belt. \"I said no. Ask again and see what happens.\""
+}

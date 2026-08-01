@@ -1,0 +1,16 @@
+{
+  "interpretation": "While the guard's back is turned, player lifts the key off his belt.",
+  "ruling": "partial",
+  "modifiers": [
+    { "label": "guard distracted", "value": 2 },
+    { "label": "quick fingers", "value": 1 }
+  ],
+  "effects_on_success": [
+    { "type": "transfer_item", "item": "key_north", "from": "guard_01", "to": "player" }
+  ],
+  "narration_on_success": "The key slides free without a sound. He doesn't so much as flinch.",
+  "effects_on_failure": [
+    { "type": "modify_disposition", "entity": "guard_01", "delta": -2 }
+  ],
+  "narration_on_failure": "He catches your wrist mid-reach and shoves you back. \"Hands off,\" he snaps, temper gone."
+}
