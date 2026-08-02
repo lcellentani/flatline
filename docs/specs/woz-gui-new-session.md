@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Ready |
+| **Status** | Implemented |
 | **Date** | 2026-07-18 |
-| **Plan** | Not yet planned |
+| **Plan** | `docs/plans/woz-gui-new-session.md` (Done — 2/2 phases done) |
 | **Supersedes** | N/A |
 
 ---
