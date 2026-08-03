@@ -42,8 +42,8 @@
 // specific JSON, without touching any existing header's contract.
 //
 // Outcome is a std::variant<ModifierBudgetRejected, GauntletRejected,
-// Applied>, not a flat struct with "present only if" fields — locked
-// specifically to make invalid reads (e.g. touching world_after on a
+// Applied, Observed>, not a flat struct with "present only if" fields —
+// locked specifically to make invalid reads (e.g. touching world_after on a
 // rejected turn) structurally impossible rather than a convention to
 // remember at every call site. Same fix shape as Damage.via going from
 // optional-with-a-silent-bypass to required-with-a-sentinel, and the same
@@ -109,11 +109,14 @@ struct RollInfo {
 };
 
 // ---------------------------------------------------------------------
-// The three outcomes a turn can reach. Rejected turns never roll a
+// The four outcomes a turn can reach. Rejected turns never roll a
 // branch selection or touch the applier — GauntletRejected still CAN
 // carry a RollInfo (a turn can roll, then fail the gauntlet on the branch
 // the roll selected), but ModifierBudgetRejected structurally cannot: the
-// pipeline never reaches the roll before that gate fires.
+// pipeline never reaches the roll before that gate fires. Observed (below,
+// gm_log.hpp:150) is further still: a Tier-0 beat never enters the
+// gauntlet/roll/applier pipeline at all — there is no WorkOrder to reject
+// or apply in the first place.
 // ---------------------------------------------------------------------
 struct ModifierBudgetRejected {
     int64_t magnitude_sum;
@@ -147,7 +150,13 @@ struct Applied {
     std::vector<applier::VitalTransition> vital_transitions;
 };
 
-using Outcome = std::variant<ModifierBudgetRejected, GauntletRejected, Applied>;
+struct Observed {
+    std::string kind;
+    std::string target;
+    std::string narration;
+};
+
+using Outcome = std::variant<ModifierBudgetRejected, GauntletRejected, Applied, Observed>;
 
 struct LogEntry {
     int64_t turn_number;
@@ -174,7 +183,7 @@ inline void from_json(const json& j, RollInfo& r) {
 }
 
 // ---------------------------------------------------------------------
-// JSON: the three Outcome alternatives, plus the variant's own tag
+// JSON: the four Outcome alternatives, plus the variant's own tag
 // dispatch on "status" — same recipe gm_json.hpp already uses for Effect
 // and Ruling, not a new one.
 // ---------------------------------------------------------------------
@@ -238,6 +247,15 @@ inline void from_json(const json& j, Applied& o) {
     o.vital_transitions = j.value("vital_transitions", std::vector<applier::VitalTransition>{});
 }
 
+inline void to_json(json& j, const Observed& o) {
+    j = json{{"status", "observed"}, {"kind", o.kind}, {"target", o.target}, {"narration", o.narration}};
+}
+inline void from_json(const json& j, Observed& o) {
+    j.at("kind").get_to(o.kind);
+    j.at("target").get_to(o.target);
+    j.at("narration").get_to(o.narration);
+}
+
 inline void to_json(json& j, const Outcome& o) {
     std::visit([&](const auto& alt) { to_json(j, alt); }, o);
 }
@@ -249,6 +267,8 @@ inline void from_json(const json& j, Outcome& o) {
         o = j.get<GauntletRejected>();
     else if (status == "applied")
         o = j.get<Applied>();
+    else if (status == "observed")
+        o = j.get<Observed>();
     else
         throw std::runtime_error("unknown log entry status '" + status + "'");
 }

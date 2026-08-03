@@ -1,8 +1,14 @@
 // Verification harness for gm_log.hpp -- not a project artifact, just the
 // compile+behavior gate for session log 8's change. Exercises:
-//   - JSON round-trip for all three Outcome kinds (ModifierBudgetRejected,
-//     GauntletRejected, Applied), including the rolled/no-roll variants
-//     of each
+//   - JSON round-trip for all four Outcome kinds (ModifierBudgetRejected,
+//     GauntletRejected, Applied, Observed), including the rolled/no-roll
+//     variants of each
+//   - Observed (woz-gui-orchestrator-flow, Task 1.1): hand-built like
+//     ModifierBudgetRejected -- a Tier-0 beat never touches the
+//     gauntlet/roll/applier, so it's never constructed via the pipeline
+//   - Outcome::from_json: an unrecognized "status" tag still throws
+//     std::runtime_error -- regression proving the new "observed" branch
+//     doesn't loosen this check for any other tag
 //   - GauntletRejected.conflicting_with_index (session log 11): absent on
 //     an ordinary rejection, present and round-trips as a real value on a
 //     batch_conflict rejection, and a pre-existing log line written before
@@ -335,6 +341,41 @@ int main() {
         check(
             parsed_old.turn_number == no_input.turn_number && std::holds_alternative<log::Applied>(parsed_old.outcome),
             "player_input: the rest of a pre-existing entry is unaffected by the missing field");
+    }
+
+    // --- 11. Observed: JSON round-trip, hand-built (no pipeline run) -------
+    //         Mirrors case 4's shape: a Tier-0 beat never touches the
+    //         gauntlet/roll/applier, so it's constructed directly rather
+    //         than via build_applied_entry().
+    {
+        log::Observed observed{"examine", "guard_01", "The guard eyes you warily, hand on his hilt."};
+        WorkOrder wo = examples::bribe_the_guard();
+        log::LogEntry entry{11, wo, observed};
+
+        json j = entry;
+        check(j.at("status") == "observed", "Observed: status tag correct");
+        check(!j.contains("roll") && !j.contains("world_before") && !j.contains("applied_effects"),
+              "Observed: no roll/world/effects fields leak into the JSON at all");
+
+        log::LogEntry parsed = j.get<log::LogEntry>();
+        auto& o = std::get<log::Observed>(parsed.outcome);
+        check(o.kind == observed.kind && o.target == observed.target && o.narration == observed.narration,
+              "Observed round-trip: kind/target/narration preserved");
+    }
+
+    // --- 12. Outcome::from_json: an unrecognized status still throws -------
+    //         (regression -- adding the "observed" branch must not loosen
+    //         this check for any other/garbage tag)
+    {
+        json j = json{{"status", "not_a_real_status"}};
+        bool threw = false;
+        try {
+            log::Outcome bad = j.get<log::Outcome>();
+            (void)bad;
+        } catch (const std::runtime_error&) {
+            threw = true;
+        }
+        check(threw, "Outcome::from_json: unrecognized status still throws std::runtime_error");
     }
 
     std::cout << "\n" << g_pass << " passed, " << g_fail << " failed\n";
