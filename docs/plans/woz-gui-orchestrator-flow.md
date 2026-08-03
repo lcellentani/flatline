@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/woz-gui-orchestrator-flow.md` |
 | **Date** | 2026-08-02 |
-| **Status** | Not Started |
+| **Status** | In Progress (0/4 phases done) |
 | **Effort** | 3–4 sessions |
 
 ---
@@ -34,7 +34,7 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 
 ## 2. Phased Task Breakdown
 
-### Phase 1: Log schema — `Observed` outcome + optional `work_order` — Not Started
+### Phase 1: Log schema — `Observed` outcome + optional `work_order` — In Progress
 
 **Objective:** `gm::log::LogEntry` can represent a Tier-0 beat (no `WorkOrder`) alongside the three existing adjudicated outcomes, with full JSON round-trip coverage.
 
