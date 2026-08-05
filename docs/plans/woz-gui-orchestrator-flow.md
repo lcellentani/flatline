@@ -86,18 +86,20 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 
 ---
 
-### Phase 2: Tier-0 detector — classification + exit traversal — Not Started
+### Phase 2: Tier-0 detector — classification + exit traversal — In Progress
 
 **Objective:** A pure, spec-locked classification function determines whether a composed `kind`+target resolves Tier-0 or routes to WorkOrder, with no such logic existing in the codebase yet.
 
+**Exec-planning revision (locked before implementation started):** `exit_permits_passage`/`is_tier0` live in a new header, `src/woz_gui_detector.hpp`, not as `static` functions inside `woz_gui.cpp` as originally drafted — so a real `test_woz_gui_detector.cpp` binary can link against them like the project's other five `test_*.cpp` targets, rather than relying on a code-read-only check with no automated coverage until Phase 3's GUI exists. `woz_gui.cpp` gains an `#include "woz_gui_detector.hpp"` once Phase 3 actually calls into it; Phase 2 itself doesn't touch `woz_gui.cpp`. This adds Task 2.3 and a `CMakeLists.txt` entry not in the original plan draft.
+
 #### Task 2.1: Exit-gating-object traversal helper
 
-**File:** `src/woz_gui.cpp`
+**File:** `src/woz_gui_detector.hpp` (new)
 **Tag:** T2 — no existing precedent to copy (confirmed by search); the lookup itself is simple but the "how do I structure this against `World`" call is a real small design decision.
 
 **Changes:**
-- New static function, e.g. `bool exit_permits_passage(const World& world, const std::string& direction)`: looks up `world.room.exits` for `direction`, finds the matching `ObjectState` in `world.objects` by id, reads its `"locked"` property via `std::get_if<bool>`, returns `!locked`. Missing exit, missing object, or a non-bool/absent `"locked"` property all default to blocking (`false`) — the detector only ever decides bypass-or-not, never legality, so the safe default is "needs the GM."
-- Place near the file's other read-only `World` helpers (top of file, alongside `scan_workorders_dir`/`entry_label`).
+- New function, e.g. `bool exit_permits_passage(const World& world, const std::string& direction)`: looks up `world.room.exits` for `direction`, finds the matching `ObjectState` in `world.objects` by id, reads its `"locked"` property via `std::get_if<bool>`, returns `!locked`. Missing exit, missing object, or a non-bool/absent `"locked"` property all default to blocking (`false`) — the detector only ever decides bypass-or-not, never legality, so the safe default is "needs the GM."
+- Object-by-id lookup follows the existing raw-`for`-loop-with-pointer idiom already used twice in the codebase (`gm_rules.hpp`'s `object_exists`, `gm_gauntlet.hpp`'s `preconditions(SetObjectState)`), not a new lookup style.
 
 **Acceptance Criteria:**
 - Against `room_guardroom.json` (`door_north`, `locked: true`), returns `false`.
@@ -106,14 +108,26 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 
 #### Task 2.2: Per-`kind` Tier-0 classification function
 
-**File:** `src/woz_gui.cpp`
+**File:** `src/woz_gui_detector.hpp`
 **Tag:** T1 — this function is a direct encoding of the spec's locked per-`kind` rule table (§4 Key Decisions); the author should write it by hand since a subtle bug here changes what does or doesn't get GM review.
 
 **Changes:**
-- New static function, e.g. `bool is_tier0(const std::string& kind, const World& world, const std::string& target)`: `examine` → always `true`; `move` → `exit_permits_passage(world, target)`; `interact`/`use_item_on`/`attack`/`say` → always `false`.
+- New function, e.g. `bool is_tier0(const std::string& kind, const World& world, const std::string& target)`: `examine` → always `true`; `move` → `exit_permits_passage(world, target)`; `interact`/`use_item_on`/`attack`/`say` → always `false`; any other/garbage `kind` string → `false` (silent safe-default, consistent with the rest of the detector's philosophy — unreachable from the real UI today since Task 3.1 constrains `compositor_kind` to the six literals via a fixed combo, but the function's own contract still needs to be total).
 
 **Acceptance Criteria:**
-- Code-read check against hand-constructed `World` fixtures (no running GUI needed yet): each of the six kind literals passed to `is_tier0` returns the value the spec's rule table dictates — `examine` always `true`; `interact`/`use_item_on`/`attack`/`say` always `false`; `move` matching `exit_permits_passage`'s return for both an open and a blocked exit. The full interactive truth-table check against the running GUI is deferred to Phase 3's Task 3.3 acceptance criteria, once the compositor UI exists to exercise it.
+- Automated, via Task 2.3's `test_woz_gui_detector.cpp` against hand-constructed `World` fixtures (no running GUI needed): each of the six kind literals passed to `is_tier0` returns the value the spec's rule table dictates — `examine` always `true`; `interact`/`use_item_on`/`attack`/`say` always `false`; `move` matching `exit_permits_passage`'s return for both an open and a blocked exit. A garbage kind string returns `false`. The full interactive truth-table check against the running GUI is still deferred to Phase 3's Task 3.3 acceptance criteria as a regression check, once the compositor UI exists to exercise it.
+
+#### Task 2.3: `test_woz_gui_detector.cpp` + CMake target
+
+**File:** `src/test_woz_gui_detector.cpp` (new), `CMakeLists.txt`
+**Tag:** T3 — mechanical: copies `test_log.cpp`'s harness shape (`check()`/`g_pass`/`g_fail`, hand-built `World` fixtures) and `CMakeLists.txt`'s existing `flatline_add_executable(test_X src/test_X.cpp)` pattern verbatim.
+
+**Changes:**
+- New standalone test executable exercising Task 2.1/2.2's acceptance criteria directly: `room_guardroom.json`-shaped fixture plus a hand-mutated `locked: false` copy for `exit_permits_passage`; all six `kind` literals plus one garbage string for `is_tier0`.
+- `CMakeLists.txt`: add `flatline_add_executable(test_woz_gui_detector src/test_woz_gui_detector.cpp)` alongside the other `test_*` targets (`CMakeLists.txt:49-53`).
+
+**Acceptance Criteria:**
+- `build/bin/test_woz_gui_detector` passes with `g_fail == 0`, covering every case listed in Task 2.1/2.2's acceptance criteria.
 
 **Rollback:** `git revert` the commit(s) for this phase.
 
@@ -237,6 +251,9 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 |------|---------|----------|------|
 | `src/gm_log.hpp` | Add `Observed` alternative, make `work_order` optional, extend JSON (de)serialization | +40 | Medium — touches the replay log schema |
 | `src/test_log.cpp` | New round-trip test cases for `Observed` and `work_order`-absent | +40 | Low |
+| `src/woz_gui_detector.hpp` (new) | `exit_permits_passage` + `is_tier0` Tier-0 classification, split out for testability (exec-planning revision, Phase 2) | +30 | Low |
+| `src/test_woz_gui_detector.cpp` (new) | Round-trip/truth-table coverage for `woz_gui_detector.hpp` | +40 | Low |
+| `CMakeLists.txt` | Add `test_woz_gui_detector` executable target | +1 | Low |
 | `src/woz_gui.cpp` | Compositor state/UI, Tier-0 detector, inline resolution, `Observed` logging, hint-based `player_input`, layout reorder | +280 | Medium — touches the panel's most-edited region |
 
 ---
