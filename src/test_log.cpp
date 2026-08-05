@@ -6,6 +6,10 @@
 //   - Observed (woz-gui-orchestrator-flow, Task 1.1): hand-built like
 //     ModifierBudgetRejected -- a Tier-0 beat never touches the
 //     gauntlet/roll/applier, so it's never constructed via the pipeline
+//   - work_order (woz-gui-orchestrator-flow, Task 1.2/1.3): optional now --
+//     absent entirely on a hand-built Observed entry, and a hand-erased
+//     "work_order" key on an old Applied line still parses, defaulting to
+//     std::nullopt rather than throwing
 //   - Outcome::from_json: an unrecognized "status" tag still throws
 //     std::runtime_error -- regression proving the new "observed" branch
 //     doesn't loosen this check for any other tag
@@ -346,18 +350,22 @@ int main() {
     // --- 11. Observed: JSON round-trip, hand-built (no pipeline run) -------
     //         Mirrors case 4's shape: a Tier-0 beat never touches the
     //         gauntlet/roll/applier, so it's constructed directly rather
-    //         than via build_applied_entry().
+    //         than via build_applied_entry(). Unlike case 4, work_order is
+    //         std::nullopt -- a Tier-0 beat never has a WorkOrder to begin
+    //         with, which is the whole reason Task 1.2 made the field
+    //         optional in the first place.
     {
         log::Observed observed{"examine", "guard_01", "The guard eyes you warily, hand on his hilt."};
-        WorkOrder wo = examples::bribe_the_guard();
-        log::LogEntry entry{11, wo, observed};
+        log::LogEntry entry{11, std::nullopt, observed, ""};
 
         json j = entry;
         check(j.at("status") == "observed", "Observed: status tag correct");
+        check(!j.contains("work_order"), "Observed: no work_order key in the JSON at all (Tier-0 beat has none)");
         check(!j.contains("roll") && !j.contains("world_before") && !j.contains("applied_effects"),
               "Observed: no roll/world/effects fields leak into the JSON at all");
 
         log::LogEntry parsed = j.get<log::LogEntry>();
+        check(!parsed.work_order.has_value(), "Observed round-trip: work_order stays absent, not a phantom value");
         auto& o = std::get<log::Observed>(parsed.outcome);
         check(o.kind == observed.kind && o.target == observed.target && o.narration == observed.narration,
               "Observed round-trip: kind/target/narration preserved");
@@ -376,6 +384,27 @@ int main() {
             threw = true;
         }
         check(threw, "Outcome::from_json: unrecognized status still throws std::runtime_error");
+    }
+
+    // --- 13. work_order: tolerant of omission, mirrors case 10c's shape ----
+    //         An old on-disk log line written before Task 1.2 (when
+    //         work_order was mandatory) still has the key; simulate one
+    //         predating that change by erasing the key from an otherwise
+    //         ordinary Applied entry's JSON and confirm it still parses,
+    //         with work_order defaulting to std::nullopt rather than
+    //         throwing, and the rest of the entry unaffected.
+    {
+        log::LogEntry entry = build_applied_entry(world, 12);
+        json j = entry;
+        check(j.contains("work_order"), "work_order: present in JSON for an ordinary Applied turn");
+
+        json j_no_wo = j;
+        j_no_wo.erase("work_order");
+        log::LogEntry parsed = j_no_wo.get<log::LogEntry>();
+        check(!parsed.work_order.has_value(),
+              "work_order: a line with the key erased parses, defaults to std::nullopt rather than throwing");
+        check(parsed.turn_number == entry.turn_number && std::holds_alternative<log::Applied>(parsed.outcome),
+              "work_order: the rest of a pre-existing entry is unaffected by the missing key");
     }
 
     std::cout << "\n" << g_pass << " passed, " << g_fail << " failed\n";

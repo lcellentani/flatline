@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/woz-gui-orchestrator-flow.md` |
 | **Date** | 2026-08-02 |
-| **Status** | In Progress (0/4 phases done) |
+| **Status** | In Progress (1/4 phases done) |
 | **Effort** | 3–4 sessions |
 
 ---
@@ -34,11 +34,11 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 
 ## 2. Phased Task Breakdown
 
-### Phase 1: Log schema — `Observed` outcome + optional `work_order` — In Progress
+### Phase 1: Log schema — `Observed` outcome + optional `work_order` — Done
 
 **Objective:** `gm::log::LogEntry` can represent a Tier-0 beat (no `WorkOrder`) alongside the three existing adjudicated outcomes, with full JSON round-trip coverage.
 
-#### Task 1.1: Add `Observed` alternative to `Outcome`
+#### Task 1.1: Add `Observed` alternative to `Outcome` — Done
 
 **File:** `src/gm_log.hpp`
 **Tag:** T3 — mirrors the existing `ModifierBudgetRejected` tag-on-status shape exactly, but touches the replay log schema so the author should review every line.
@@ -70,7 +70,7 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 - A hand-built JSON object with a `"work_order"` key present (simulating an old on-disk log line) still parses with `work_order` populated.
 - The full project builds clean against the new `std::optional<WorkOrder>` member with no call-site edits elsewhere: `gm_turn.hpp`'s three `LogEntry{...}` construction sites and `woz_gui.cpp`'s own `LogEntry{turn_number, wo, outcome, player_input}` reconstruction (`woz_gui.cpp:578`) all still compile as-is, since `std::optional<WorkOrder>` converts implicitly from a plain `WorkOrder` in aggregate-init — verified at Phase 1, not deferred to the plan-end Validation Checklist.
 
-#### Task 1.3: Extend `test_log.cpp` with `Observed` and `work_order`-absent coverage
+#### Task 1.3: Extend `test_log.cpp` with `Observed` and `work_order`-absent coverage — Done
 
 **File:** `src/test_log.cpp`
 **Tag:** T3 — new test blocks copying two existing precedents exactly: Section 4's hand-built-no-pipeline `ModifierBudgetRejected` shape, and Section 10c's tolerant-of-omission `j.erase(...)` shape.
