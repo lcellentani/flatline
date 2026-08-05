@@ -110,7 +110,7 @@ int main() {
         log::LogEntry parsed = json::parse(dumped).get<log::LogEntry>();
 
         check(parsed.turn_number == entry.turn_number, "Applied round-trip: turn_number preserved");
-        check(json(parsed.work_order) == json(entry.work_order), "Applied round-trip: work_order preserved");
+        check(json(*parsed.work_order) == json(*entry.work_order), "Applied round-trip: work_order preserved");
 
         auto& a1 = std::get<log::Applied>(entry.outcome);
         auto& a2 = std::get<log::Applied>(parsed.outcome);
@@ -315,7 +315,7 @@ int main() {
         log::LogEntry parsed = json::parse(dumped).get<log::LogEntry>();
         check(parsed.player_input == entry.player_input,
               "player_input: non-empty value round-trips through dump/parse verbatim");
-        check(parsed.player_input != parsed.work_order.interpretation,
+        check(parsed.player_input != parsed.work_order->interpretation,
               "player_input: stays distinct from work_order.interpretation (not collapsed into it)");
 
         // 10b. present as "" rather than omitted on a turn with no raw input

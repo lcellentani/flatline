@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <fstream>
 #include <optional>
 #include <sstream>
@@ -160,7 +161,7 @@ using Outcome = std::variant<ModifierBudgetRejected, GauntletRejected, Applied, 
 
 struct LogEntry {
     int64_t turn_number;
-    WorkOrder work_order;  // raw — reuses gm_json.hpp's existing to_json/from_json verbatim
+    std::optional<WorkOrder> work_order;  // raw — reuses gm_json.hpp's existing to_json/from_json verbatim
     Outcome outcome;
     // The player's raw words, as the GM received them — NOT work_order's
     // interpretation, which is the GM's own paraphrase authored afterwards.
@@ -279,7 +280,9 @@ inline void from_json(const json& j, Outcome& o) {
 inline void to_json(json& j, const LogEntry& e) {
     j = json::object();
     j["turn_number"] = e.turn_number;
-    j["work_order"] = e.work_order;
+    if (e.work_order) {
+        j["work_order"] = *e.work_order;
+    }
     // Always written, even when empty — an explicit "" says the turn was
     // captured with no raw input, which a reader can tell apart from an
     // absent key (a line predating the field). Same present-as-empty
@@ -294,7 +297,11 @@ inline void to_json(json& j, const LogEntry& e) {
 }
 inline void from_json(const json& j, LogEntry& e) {
     j.at("turn_number").get_to(e.turn_number);
-    j.at("work_order").get_to(e.work_order);
+    if (j.contains("work_order"))
+        e.work_order = j.at("work_order");
+    else
+        e.work_order = std::nullopt;
+
     // Tolerant of omission: logs written before this field existed still parse.
     e.player_input = j.value("player_input", std::string{});
     j.get_to(e.outcome);  // Outcome::from_json reads "status" off the same flattened object
