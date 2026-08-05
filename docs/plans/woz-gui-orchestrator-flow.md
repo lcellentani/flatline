@@ -54,7 +54,7 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 - A `LogEntry` wrapping an `Observed{"examine", "guard_01", "..."}` round-trips through `to_json`/`from_json` with all three fields preserved and `status == "observed"`.
 - An unrecognized `"status"` value still throws `std::runtime_error` (regression — the new branch doesn't loosen the existing check).
 
-#### Task 1.2: Make `LogEntry.work_order` optional
+#### Task 1.2: Make `LogEntry.work_order` optional — Done
 
 **File:** `src/gm_log.hpp`
 **Tag:** T2 — changes the implicit contract of every existing deserialization call site (a `WorkOrder` used to be guaranteed present); a real judgment call on the tolerant-of-omission shape, not pure mechanics.
