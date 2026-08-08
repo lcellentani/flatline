@@ -92,7 +92,7 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 
 **Exec-planning revision (locked before implementation started):** `exit_permits_passage`/`is_tier0` live in a new header, `src/woz_gui_detector.hpp`, not as `static` functions inside `woz_gui.cpp` as originally drafted — so a real `test_woz_gui_detector.cpp` binary can link against them like the project's other five `test_*.cpp` targets, rather than relying on a code-read-only check with no automated coverage until Phase 3's GUI exists. `woz_gui.cpp` gains an `#include "woz_gui_detector.hpp"` once Phase 3 actually calls into it; Phase 2 itself doesn't touch `woz_gui.cpp`. This adds Task 2.3 and a `CMakeLists.txt` entry not in the original plan draft.
 
-#### Task 2.1: Exit-gating-object traversal helper
+#### Task 2.1: Exit-gating-object traversal helper — Done
 
 **File:** `src/woz_gui_detector.hpp` (new)
 **Tag:** T2 — no existing precedent to copy (confirmed by search); the lookup itself is simple but the "how do I structure this against `World`" call is a real small design decision.
@@ -117,7 +117,7 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 **Acceptance Criteria:**
 - Automated, via Task 2.3's `test_woz_gui_detector.cpp` against hand-constructed `World` fixtures (no running GUI needed): each of the six kind literals passed to `is_tier0` returns the value the spec's rule table dictates — `examine` always `true`; `interact`/`use_item_on`/`attack`/`say` always `false`; `move` matching `exit_permits_passage`'s return for both an open and a blocked exit. A garbage kind string returns `false`. The full interactive truth-table check against the running GUI is still deferred to Phase 3's Task 3.3 acceptance criteria as a regression check, once the compositor UI exists to exercise it.
 
-#### Task 2.3: `test_woz_gui_detector.cpp` + CMake target
+#### Task 2.3: `test_woz_gui_detector.cpp` + CMake target — In Progress
 
 **File:** `src/test_woz_gui_detector.cpp` (new), `CMakeLists.txt`
 **Tag:** T3 — mechanical: copies `test_log.cpp`'s harness shape (`check()`/`g_pass`/`g_fail`, hand-built `World` fixtures) and `CMakeLists.txt`'s existing `flatline_add_executable(test_X src/test_X.cpp)` pattern verbatim.
