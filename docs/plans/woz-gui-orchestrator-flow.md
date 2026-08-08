@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/woz-gui-orchestrator-flow.md` |
 | **Date** | 2026-08-02 |
-| **Status** | In Progress (1/4 phases done) |
+| **Status** | In Progress (2/4 phases done) |
 | **Effort** | 3–4 sessions |
 
 ---
@@ -86,7 +86,7 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 
 ---
 
-### Phase 2: Tier-0 detector — classification + exit traversal — In Progress
+### Phase 2: Tier-0 detector — classification + exit traversal — Done
 
 **Objective:** A pure, spec-locked classification function determines whether a composed `kind`+target resolves Tier-0 or routes to WorkOrder, with no such logic existing in the codebase yet.
 
@@ -106,7 +106,7 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 - Against a hand-edited local copy with `locked: false`, returns `true`.
 - Against a nonexistent direction, returns `false` without throwing.
 
-#### Task 2.2: Per-`kind` Tier-0 classification function
+#### Task 2.2: Per-`kind` Tier-0 classification function — Done
 
 **File:** `src/woz_gui_detector.hpp`
 **Tag:** T1 — this function is a direct encoding of the spec's locked per-`kind` rule table (§4 Key Decisions); the author should write it by hand since a subtle bug here changes what does or doesn't get GM review.
@@ -117,10 +117,12 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 **Acceptance Criteria:**
 - Automated, via Task 2.3's `test_woz_gui_detector.cpp` against hand-constructed `World` fixtures (no running GUI needed): each of the six kind literals passed to `is_tier0` returns the value the spec's rule table dictates — `examine` always `true`; `interact`/`use_item_on`/`attack`/`say` always `false`; `move` matching `exit_permits_passage`'s return for both an open and a blocked exit. A garbage kind string returns `false`. The full interactive truth-table check against the running GUI is still deferred to Phase 3's Task 3.3 acceptance criteria as a regression check, once the compositor UI exists to exercise it.
 
-#### Task 2.3: `test_woz_gui_detector.cpp` + CMake target — In Progress
+#### Task 2.3: `test_woz_gui_detector.cpp` + CMake target — Done
 
 **File:** `src/test_woz_gui_detector.cpp` (new), `CMakeLists.txt`
 **Tag:** T3 — mechanical: copies `test_log.cpp`'s harness shape (`check()`/`g_pass`/`g_fail`, hand-built `World` fixtures) and `CMakeLists.txt`'s existing `flatline_add_executable(test_X src/test_X.cpp)` pattern verbatim.
+
+**Actual:** T2 — the `exit_permits_passage`/CMake-target commit was tagged T2, not T3; the author requested Phase 2 commits be finalized at T2 rather than following each task's individually reasoned tag. The later `is_tier0` test coverage was folded into Task 2.2's T1 commit.
 
 **Changes:**
 - New standalone test executable exercising Task 2.1/2.2's acceptance criteria directly: `room_guardroom.json`-shaped fixture plus a hand-mutated `locked: false` copy for `exit_permits_passage`; all six `kind` literals plus one garbage string for `is_tier0`.
