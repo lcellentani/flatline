@@ -51,6 +51,7 @@ flatline_add_executable(test_log src/test_log.cpp)
 flatline_add_executable(test_applier src/test_applier.cpp)
 flatline_add_executable(test_roll src/test_roll.cpp)
 flatline_add_executable(test_turn src/test_turn.cpp)
+flatline_add_executable(test_woz_gui_detector src/test_woz_gui_detector.cpp)
 flatline_add_executable(woz src/wizard_of_oz_demo.cpp)
 flatline_add_executable(woz_loop src/woz_loop.cpp)
 
