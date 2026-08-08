@@ -1,8 +1,7 @@
 // Verification harness for woz_gui_detector.hpp -- not a project artifact,
 // just the compile+behavior gate for the woz-gui-orchestrator-flow plan's
-// Phase 2 (Tier-0 detector). Covers exit_permits_passage (Task 2.1);
-// is_tier0 (Task 2.2) is still a declaration only, so it isn't exercised
-// here yet.
+// Phase 2 (Tier-0 detector). Covers exit_permits_passage (Task 2.1) and
+// is_tier0 (Task 2.2).
 //
 // Build: g++ -std=c++20 -I. -I<path-to-nlohmann> -Wall -Wextra test_woz_gui_detector.cpp -o test_woz_gui_detector
 
@@ -79,6 +78,25 @@ int main() {
         check(woz_gui::exit_permits_passage(world, "north") == false,
               "exit_permits_passage: non-bool locked property -> false");
     }
+
+    // --- is_tier0 -------------------------------------------------------
+
+    check(woz_gui::is_tier0("examine", base, "guard_01") == true, "is_tier0: examine -> true");
+
+    check(woz_gui::is_tier0("interact", base, "guard_01") == false, "is_tier0: interact -> false");
+    check(woz_gui::is_tier0("use_item_on", base, "guard_01") == false, "is_tier0: use_item_on -> false");
+    check(woz_gui::is_tier0("attack", base, "guard_01") == false, "is_tier0: attack -> false");
+    check(woz_gui::is_tier0("say", base, "guard_01") == false, "is_tier0: say -> false");
+
+    check(woz_gui::is_tier0("move", base, "north") == false, "is_tier0: move toward locked exit -> false");
+
+    {
+        World world = base;
+        find_object(world, "door_north")->properties["locked"] = false;
+        check(woz_gui::is_tier0("move", world, "north") == true, "is_tier0: move toward open exit -> true");
+    }
+
+    check(woz_gui::is_tier0("fly", base, "guard_01") == false, "is_tier0: garbage kind -> false");
 
     std::cout << "\n" << g_pass << " passed, " << g_fail << " failed\n";
     return g_fail == 0 ? 0 : 1;
