@@ -100,8 +100,8 @@ static std::vector<std::string> scan_workorders_dir() {
 // both render "Turn N -- <status> -- <teaser>" off the same stored LogEntry JSON.
 static std::string entry_label(const nlohmann::json& entry) {
     const std::string status = entry.value("status", std::string{});
-    const std::string teaser =
-        status == "applied" ? entry.value("narration", std::string{}) : entry.value("reason", std::string{});
+    const std::string teaser = (status == "applied" || status == "observed") ? entry.value("narration", std::string{})
+                                                                             : entry.value("reason", std::string{});
     return "Turn " + std::to_string(entry.value("turn_number", int64_t{0})) + " — " + status + " — " + teaser;
 }
 
@@ -233,6 +233,28 @@ static std::string compose_observation(const gm::World& world, const std::string
         return text;
     }
     return {};  // unreachable: is_tier0 only reaches here with a target resolved above
+}
+
+// Assembles the orchestrator-voice hint line for WorkOrder-bound compositions
+// (docs/guides/scenario-authoring.md §3's "mechanical/spatial actions" phrasing).
+// Empty for say and examine (never WorkOrder-bound) and for a move whose exit is
+// currently open (Tier-0 resolves that inline instead, via compose_observation).
+static std::string compose_hint(const gm::World& world, const std::string& kind, const std::string& target,
+                                const std::string& item, const std::string& direction) {
+    if (kind == "interact") {
+        return target.empty() ? std::string{} : "player moves to " + target + " and interacts";
+    }
+    if (kind == "attack") {
+        return target.empty() ? std::string{} : "player attacks " + target;
+    }
+    if (kind == "use_item_on") {
+        return (item.empty() || target.empty()) ? std::string{} : "player uses " + item + " on " + target;
+    }
+    if (kind == "move") {
+        return (!direction.empty() && !gm::woz_gui::is_tier0(kind, world, direction)) ? "player moves " + direction
+                                                                                      : std::string{};
+    }
+    return {};
 }
 
 // --- Splitters ------------------------------------------------------------------------------------------------------
@@ -702,14 +724,36 @@ int main(int argc, char* argv[]) {
             compositor_kind_name == "move" ? compositor_direction : compositor_target;
         if (!compositor_tier0_target.empty() &&
             woz_gui::is_tier0(compositor_kind_name, world, compositor_tier0_target)) {
-            ImGui::TextWrapped("%s", compose_observation(world, compositor_kind_name, compositor_tier0_target).c_str());
+            const std::string observation = compose_observation(world, compositor_kind_name, compositor_tier0_target);
+            ImGui::TextWrapped("%s", observation.c_str());
+
+            if (ImGui::Button("Log Observation")) {
+                log::LogEntry entry{turn_number, std::nullopt,
+                                    log::Observed{compositor_kind_name, compositor_tier0_target, observation}, ""};
+                try {
+                    log::append_to_file(log_path, entry);
+                    log_entries.push_back(nlohmann::json(entry));
+                    selected_entry = static_cast<int>(log_entries.size()) - 1;
+                    ++turn_number;  // shares the single counter with the adjudicated path
+
+                    compositor_kind = 0;
+                    compositor_target.clear();
+                    compositor_item.clear();
+                    compositor_direction.clear();
+                } catch (const std::exception& ex) {
+                    parse_error = ex.what();  // turn_number/log_entries untouched
+                }
+            }
         }
+
+        const std::string composed_line =
+            compose_hint(world, compositor_kind_name, compositor_target, compositor_item, compositor_direction);
 
         const float footer_height = ImGui::GetFrameHeightWithSpacing() * 2.0f;
 
         ImGui::Text("Player action:");
         ImGui::SameLine();
-        ImGui::InputText("##PlayerInput", player_input_buf, sizeof(player_input_buf));
+        ImGui::InputTextWithHint("##PlayerInput", composed_line.c_str(), player_input_buf, sizeof(player_input_buf));
         player_input = player_input_buf;
 
         ImGui::InputTextMultiline("##WorkOrderEditor", wo_text_buf, sizeof(wo_text_buf), ImVec2(-1.0f, -footer_height));
