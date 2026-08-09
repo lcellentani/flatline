@@ -35,6 +35,10 @@ constexpr const char* kRoomDescriptionTitle = "Room Description";
 constexpr const char* kWorkOrderTitle = "GM WorkOrder";
 constexpr const char* kLogTitle = "Log";
 
+// The compositor's fixed kind literals (spec's locked per-kind rule table,
+// woz_gui_detector.hpp's is_tier0 mirrors the same set).
+constexpr const char* kCompositorKinds[] = {"examine", "move", "interact", "use_item_on", "attack", "say"};
+
 static std::string generate_session_log_path() {
     const auto now = std::chrono::system_clock::now();
     const std::time_t seconds = std::chrono::system_clock::to_time_t(now);
@@ -314,6 +318,14 @@ int main(int argc, char* argv[]) {
 
     std::string player_input;
 
+    // Compositor state (Task 3.1): compositor_kind indexes kCompositorKinds; the three
+    // selection fields are per-kind target/item/direction, populated by Task 3.2's
+    // contextual fields and reset alongside wo_text/player_input at every reset point.
+    int compositor_kind = 0;
+    std::string compositor_target;
+    std::string compositor_item;
+    std::string compositor_direction;
+
     // Deliberately separate from parse_error: this one is owned and rendered by the Room
     // Description panel, so sharing parse_error would either show a reload failure in the
     // wrong window or let the WorkOrder panel's Submit/Save handlers clobber it later in
@@ -444,6 +456,11 @@ int main(int argc, char* argv[]) {
                 player_input.clear();
                 player_input_buf[0] = '\0';
 
+                compositor_kind = 0;
+                compositor_target.clear();
+                compositor_item.clear();
+                compositor_direction.clear();
+
                 save_filename.clear();
                 save_filename_buf[0] = '\0';
 
@@ -553,6 +570,8 @@ int main(int argc, char* argv[]) {
 
         ImGui::Separator();
 
+        ImGui::Combo("Action", &compositor_kind, kCompositorKinds, IM_ARRAYSIZE(kCompositorKinds));
+
         const float footer_height = ImGui::GetFrameHeightWithSpacing() * 2.0f;
 
         ImGui::Text("Player action:");
@@ -586,6 +605,11 @@ int main(int argc, char* argv[]) {
                 player_input.clear();
                 player_input_buf[0] = '\0';
 
+                compositor_kind = 0;
+                compositor_target.clear();
+                compositor_item.clear();
+                compositor_direction.clear();
+
                 if (std::holds_alternative<log::Applied>(outcome) && rules::session_over(world)) {
                     session_over = true;
                 }
@@ -603,6 +627,11 @@ int main(int argc, char* argv[]) {
             snprintf(wo_text_buf, sizeof(wo_text_buf), "%s", wo_text.c_str());
             player_input.clear();
             player_input_buf[0] = '\0';
+
+            compositor_kind = 0;
+            compositor_target.clear();
+            compositor_item.clear();
+            compositor_direction.clear();
         }
         ImGui::EndDisabled();
 
