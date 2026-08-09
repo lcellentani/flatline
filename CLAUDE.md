@@ -36,11 +36,10 @@ C++ style is defined in `.claude/rules/coding_style.md` (auto-loaded). Run `/cla
 - **Read the highest-numbered `docs/context/session-log-N-*.md` before starting work.** Session logs are numbered, chronological, and append-only; the latest carries the current open questions and suggested next step, and a log sometimes records a decision before it is written back into the spec.
 - Work occasionally runs ahead of the newest session log. If the git history shows commits past the last log, read those commits too — the log is not a guaranteed high-water mark.
 
-Durable orientation (verified 2026-08-08, re-verify against the docs):
+Durable orientation (verified 2026-08-09, re-verify against the docs):
 
-- The adjudicator contract (`docs/specs/gm-adjudicator.md`) is **Implemented** end to end, and the Wizard-of-Oz tooling is built (`gm-multiturn-loop`, `woz-gui-qol`, `woz-gui-new-session`, `player-input-logging` all Done).
-- Active build work is `woz-gui-orchestrator-flow` (spec Ready, plan In Progress) — a structured turn compositor for `woz_gui`.
-- The Experiment-2 investigation program (`docs/context/investigation-plan-experiment-2.md`) is open, with no deep dive concluded yet. DD-1 is blocked on a thin Experiment-1 replay-log corpus; more played sessions are the unblocker.
+- The adjudicator contract (`docs/specs/gm-adjudicator.md`) is **Implemented** end to end, and every Wizard-of-Oz tooling spec/plan pair built so far is **Done**: `gm-multiturn-loop`, `woz-gui-qol`, `woz-gui-new-session`, `player-input-logging`, and `woz-gui-orchestrator-flow` (the structured turn compositor for `woz_gui`, completed this session). No build work is currently active.
+- The Experiment-2 investigation program (`docs/context/investigation-plan-experiment-2.md`) is open, with no deep dive concluded yet. DD-1 moved to **In Progress** (`session-log-13-dd1-corpus-check.md`) but remains blocked on a thin Experiment-1 replay-log corpus — playing more sessions, now capturing both raw `player_input` and the orchestrator-flow compositor's Tier-0 `Observed` beats, is the unblocker before DD-1's evidence audit can run.
 
 ## Document structure
 
