@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/woz-gui-orchestrator-flow.md` |
 | **Date** | 2026-08-02 |
-| **Status** | In Progress (3/4 phases done) |
+| **Status** | Done |
 | **Effort** | 3–4 sessions |
 
 ---
@@ -192,14 +192,15 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 
 ---
 
-### Phase 4: Tier-0 logging, hint-based `player_input`, layout reorder — Not Started
+### Phase 4: Tier-0 logging, hint-based `player_input`, layout reorder — Done
 
 **Objective:** Tier-0 resolutions get logged as `Observed` entries sharing the adjudicated-turn counter, WorkOrder-bound compositions populate `player_input`'s hint (not its buffer), and the panel's visual order matches explore → input → GM causality.
 
-#### Task 4.1: Log Tier-0 resolutions as `Observed` `LogEntry`
+#### Task 4.1: Log Tier-0 resolutions as `Observed` `LogEntry` — Done
 
 **File:** `src/woz_gui.cpp`
 **Tag:** T2 — wiring a new logging path that shares `turn_number` with the adjudicated-turn counter is exactly the "new pipeline entry point" the spec calls out as a real decision, not pure mechanics.
+**Actual:** T4 — landed together with Tasks 4.2–4.4 in a single commit; the author requested Phase 4 be finalized at T4 rather than following each task's individually reasoned tag (same pattern as Phase 3).
 
 **Changes:**
 - Add a "Log Observation" affordance, shown only when Task 3.3's inline resolution is displayed, that builds `log::Observed{kind_name, target_id, narration}`, wraps it in `log::LogEntry{turn_number, std::nullopt, observed, ""}` (`player_input` left empty — a Tier-0 beat isn't a GM-authored submission), appends to `log_entries` and to `log_path` via `log::append_to_file` (the same call `process_turn` already uses internally), then increments `turn_number` — sharing the single counter with the adjudicated path (`woz_gui.cpp:311,582`).
@@ -208,10 +209,11 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 - Logging an `examine` beat against `guard_01` appends a JSONL line with `status: "observed"`, the correct `turn_number`, and no `"work_order"` key.
 - Two Tier-0 logs followed by one adjudicated Submit produce three consecutive `turn_number` values with no gaps or repeats.
 
-#### Task 4.2: `entry_label()` handles the `"observed"` status
+#### Task 4.2: `entry_label()` handles the `"observed"` status — Done
 
 **File:** `src/woz_gui.cpp`
 **Tag:** T3 — mechanical extension of an existing ternary to a third case.
+**Actual:** T4 — same commit and author request as Task 4.1.
 
 **Changes:**
 - `entry_label()` (`woz_gui.cpp:96-101`) currently falls back to the `"reason"` field for any non-`"applied"` status; `Observed` entries have no `"reason"` field, so extend the teaser selection to use `"narration"` for `status == "observed"` too.
@@ -219,10 +221,11 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 **Acceptance Criteria:**
 - A logged `Observed` entry's list-view teaser shows its narration text, not a blank string.
 
-#### Task 4.3: Hint-based `player_input` for WorkOrder-bound compositions
+#### Task 4.3: Hint-based `player_input` for WorkOrder-bound compositions — Done
 
 **File:** `src/woz_gui.cpp`
 **Tag:** T2 — the composed-line wording per kind (matching `docs/guides/scenario-authoring.md` §3's orchestrator-voice convention) is a real authoring decision.
+**Actual:** T4 — same commit and author request as Task 4.1.
 
 **Changes:**
 - For `interact`/`use_item_on`/`attack`/`move`-toward-a-blocked-exit, assemble a canonical orchestrator-voice line from kind+target+item.
@@ -234,10 +237,11 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 - Leaving the field untouched and submitting still logs `player_input == ""` — preserves `player-input-logging`'s "empty ⇒ no raw input captured" invariant.
 - Typing over the hint works exactly as `InputText` does today (regression check).
 
-#### Task 4.4: Layout reorder
+#### Task 4.4: Layout reorder — Done
 
 **File:** `src/woz_gui.cpp`
 **Tag:** T3 — pure ImGui call reordering; the design decision is already locked in the spec.
+**Actual:** T4 — same commit and author request as Task 4.1. No code change was needed: Task 3.1 already placed the compositor block directly after the preview pane's `Separator()` and before the player-input line, which was already before the WorkOrder editor — this task's job was verifying that ordering, not producing it.
 
 **Changes:**
 - Arrange the compositor block (Tasks 3.1–3.3) and the player-input line (`woz_gui.cpp:558-561`) directly after the preview pane's `Separator()` (`woz_gui.cpp:554`) and before the WorkOrder JSON editor (`woz_gui.cpp:563`), replacing today's flat, simultaneous arrangement.
@@ -265,6 +269,8 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 
 ## 4. Validation Checklist
 
+**Note:** items below are checked where there's concrete evidence (a green test run, a clean build); the ones needing an actual click-through of the running GUI are left open — the author is doing that manual pass separately and hasn't reported back yet (same outstanding item flagged on Task 3.3).
+
 ### Functional
 - [ ] Composing `examine` against `guard_01`/`door_north`/the player resolves inline with the right properties, no WorkOrder editor touched.
 - [ ] Composing `move` toward `door_north` (locked) does not resolve inline; toward a hypothetically-unlocked exit, it does.
@@ -273,12 +279,12 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 
 ### Integration
 - [ ] Existing Submit/Reset/New Session/Save flows work unchanged.
-- [ ] `build/bin/test_log` passes with the new `Observed` and `work_order`-absent cases.
-- [ ] `woz_loop.cpp` and `wizard_of_oz_demo.cpp` build unchanged — no call-site edits needed, per spec Non-Goal.
+- [x] `build/bin/test_log` passes with the new `Observed` and `work_order`-absent cases. (52 passed, 0 failed)
+- [x] `woz_loop.cpp` and `wizard_of_oz_demo.cpp` build unchanged — no call-site edits needed, per spec Non-Goal. (full `cmake --build build` after the Phase 4 changes: nothing to rebuild for either target)
 
 ### Regression
-- [ ] All pre-existing `test_log.cpp` checks still pass.
-- [ ] An old on-disk log line (pre-this-change, real `work_order` present) still parses.
+- [x] All pre-existing `test_log.cpp` checks still pass. (52 passed, 0 failed)
+- [x] An old on-disk log line (pre-this-change, real `work_order` present) still parses. (`test_log`'s dedicated case)
 - [ ] The Log panel's detail pane (raw JSON dump) displays an `Observed` entry with no additional UI code, same as it does today for the other three outcome kinds.
 
 ---
