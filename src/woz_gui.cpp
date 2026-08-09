@@ -20,6 +20,7 @@
 #include "gm_log.hpp"
 #include "gm_rules.hpp"
 #include "gm_turn.hpp"
+#include "woz_gui_detector.hpp"
 
 constexpr const char* kBlankWorkOrderSkeleton = R"({
       "interpretation": "",
@@ -135,6 +136,103 @@ constexpr bool is_valid_filename(std::string_view filename) noexcept {
         const auto uc = static_cast<unsigned char>(ch);
         return std::isalnum(uc) || ch == '_' || ch == '-';
     });
+}
+
+// --- Compositor -------------------------------------------------------------------------------------------------
+
+// Renders a combo whose entries may display a friendlier label than the underlying id
+// they select (Examine's "(yourself)" sentinel for the player is the only case where
+// the two differ; everywhere else label == value). Returns true the frame the
+// selection changes.
+static bool id_combo(const char* label, std::string& selected_value,
+                     const std::vector<std::pair<std::string, std::string>>& options) {
+    std::string preview;
+    for (const auto& [option_label, option_value] : options) {
+        if (option_value == selected_value) {
+            preview = option_label;
+            break;
+        }
+    }
+    bool changed = false;
+    if (ImGui::BeginCombo(label, preview.c_str())) {
+        for (const auto& [option_label, option_value] : options) {
+            const bool is_selected = (option_value == selected_value);
+            if (ImGui::Selectable(option_label.c_str(), is_selected)) {
+                selected_value = option_value;
+                changed = true;
+            }
+            if (is_selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    return changed;
+}
+
+// Shared by examine/interact/attack/use_item_on's target field: every object and
+// entity id in the room, label == value.
+static std::vector<std::pair<std::string, std::string>> object_and_entity_options(const gm::World& world) {
+    std::vector<std::pair<std::string, std::string>> options;
+    for (const auto& object : world.objects) {
+        options.emplace_back(object.id.value, object.id.value);
+    }
+    for (const auto& entity : world.entities) {
+        options.emplace_back(entity.id.value, entity.id.value);
+    }
+    return options;
+}
+
+static std::string property_value_to_string(const gm::PropertyValue& value) {
+    if (const bool* b = std::get_if<bool>(&value)) {
+        return *b ? "true" : "false";
+    }
+    if (const int64_t* i = std::get_if<int64_t>(&value)) {
+        return std::to_string(*i);
+    }
+    return std::get<std::string>(value);
+}
+
+// Builds the read-only narration text for the inline Tier-0 resolution block (Task
+// 3.3) -- the same text Task 4.1 logs as an Observed entry's narration. Only ever
+// called once is_tier0 has already gated kind to "examine" or "move" against a
+// resolved target.
+static std::string compose_observation(const gm::World& world, const std::string& kind, const std::string& target) {
+    if (kind == "move") {
+        return "The way " + target + " is open.";
+    }
+
+    if (target == world.player.id.value) {
+        std::string text =
+            "hp: " + std::to_string(world.player.hp) + "\ngold: " + std::to_string(world.player.gold) + "\ninventory:";
+        for (const auto& item : world.player.inventory) {
+            text += " " + item.value;
+        }
+        return text;
+    }
+    for (const auto& entity : world.entities) {
+        if (entity.id.value != target) {
+            continue;
+        }
+        std::string text = "hp: " + std::to_string(entity.hp) +
+                           "\ndisposition: " + gm::disposition_label(entity.disposition) + "\nholds:";
+        for (const auto& item : entity.holds) {
+            text += " " + item.value;
+        }
+        text += "\npersona: " + entity.persona;
+        return text;
+    }
+    for (const auto& object : world.objects) {
+        if (object.id.value != target) {
+            continue;
+        }
+        std::string text = "properties:";
+        for (const auto& [key, value] : object.properties) {
+            text += "\n  " + key + ": " + property_value_to_string(value);
+        }
+        return text;
+    }
+    return {};  // unreachable: is_tier0 only reaches here with a target resolved above
 }
 
 // --- Splitters ------------------------------------------------------------------------------------------------------
@@ -570,7 +668,42 @@ int main(int argc, char* argv[]) {
 
         ImGui::Separator();
 
-        ImGui::Combo("Action", &compositor_kind, kCompositorKinds, IM_ARRAYSIZE(kCompositorKinds));
+        if (ImGui::Combo("Action", &compositor_kind, kCompositorKinds, IM_ARRAYSIZE(kCompositorKinds))) {
+            // Kind switch -- no stale cross-kind target survives (Task 3.2).
+            compositor_target.clear();
+            compositor_item.clear();
+            compositor_direction.clear();
+        }
+        const std::string compositor_kind_name = kCompositorKinds[compositor_kind];
+
+        if (compositor_kind_name == "examine") {
+            auto options = object_and_entity_options(world);
+            options.emplace_back("(yourself)", world.player.id.value);
+            id_combo("Target", compositor_target, options);
+        } else if (compositor_kind_name == "move") {
+            std::vector<std::pair<std::string, std::string>> options;
+            for (const auto& exit_entry : world.room.exits) {
+                options.emplace_back(exit_entry.first, exit_entry.first);
+            }
+            id_combo("Direction", compositor_direction, options);
+        } else if (compositor_kind_name == "use_item_on") {
+            std::vector<std::pair<std::string, std::string>> item_options;
+            for (const auto& item : world.player.inventory) {
+                item_options.emplace_back(item.value, item.value);
+            }
+            id_combo("Item", compositor_item, item_options);
+            id_combo("Target", compositor_target, object_and_entity_options(world));
+        } else if (compositor_kind_name == "interact" || compositor_kind_name == "attack") {
+            id_combo("Target", compositor_target, object_and_entity_options(world));
+        }
+        // say: no fields, per the spec's locked decision.
+
+        const std::string& compositor_tier0_target =
+            compositor_kind_name == "move" ? compositor_direction : compositor_target;
+        if (!compositor_tier0_target.empty() &&
+            woz_gui::is_tier0(compositor_kind_name, world, compositor_tier0_target)) {
+            ImGui::TextWrapped("%s", compose_observation(world, compositor_kind_name, compositor_tier0_target).c_str());
+        }
 
         const float footer_height = ImGui::GetFrameHeightWithSpacing() * 2.0f;
 
