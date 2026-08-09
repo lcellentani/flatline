@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Ready |
+| **Status** | Implemented |
 | **Date** | 2026-08-01 |
 | **Plan** | `docs/plans/woz-gui-orchestrator-flow.md` |
 | **Supersedes** | N/A |
