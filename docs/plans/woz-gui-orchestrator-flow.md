@@ -4,7 +4,7 @@
 |-------|-------|
 | **Spec** | `docs/specs/woz-gui-orchestrator-flow.md` |
 | **Date** | 2026-08-02 |
-| **Status** | In Progress (2/4 phases done) |
+| **Status** | In Progress (3/4 phases done) |
 | **Effort** | 3–4 sessions |
 
 ---
@@ -135,11 +135,11 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 
 ---
 
-### Phase 3: Compositor UI — kind selector, contextual fields, inline resolution — Not Started
+### Phase 3: Compositor UI — kind selector, contextual fields, inline resolution — Done
 
 **Objective:** The GM WorkOrder panel has a working structured compositor: pick a `kind`, pick a target/item/direction from the real `World`, and see `examine`/open-`move` resolve inline.
 
-#### Task 3.1: Compositor state + kind selector
+#### Task 3.1: Compositor state + kind selector — Done
 
 **File:** `src/woz_gui.cpp`
 **Tag:** T2 — new persistent UI state and its reset lifecycle (what clears on Submit/Reset/New Session, mirroring `wo_text`'s existing lifecycle) is a real design call, not pure mechanics.
@@ -153,10 +153,11 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 - The combo renders in the panel; selecting a kind updates `compositor_kind` without affecting `wo_text`/`player_input`.
 - Submit, Reset, and New Session all clear compositor state back to its default, matching `wo_text`'s existing reset behavior.
 
-#### Task 3.2: Contextual target/item/direction fields sourced from `World`
+#### Task 3.2: Contextual target/item/direction fields sourced from `World` — Done
 
 **File:** `src/woz_gui.cpp`
 **Tag:** T2 — mapping each kind to its field set is a UX judgment call, not mechanical plumbing.
+**Actual:** T4 — landed in the same commit as Task 3.3 (`8998c3f`); the author requested this pair be finalized at T4 rather than the individually reasoned T2.
 
 **Changes:**
 - `examine`: a combo enumerating `world.objects` ids + `world.entities` ids + a sentinel "(yourself)" entry for the player.
@@ -170,10 +171,12 @@ The GM WorkOrder panel in `woz_gui.cpp` gains a structured `kind` selector (`exa
 - Each kind shows only its relevant field(s).
 - Against the default `room_guardroom.json`, combo contents match its actual entries: `door_north` (exit + object), `guard_01` (entity), `dagger`/`oil_flask` (player inventory).
 
-#### Task 3.3: Inline Tier-0 resolution display — `examine` & open `move`
+#### Task 3.3: Inline Tier-0 resolution display — `examine` & open `move` — Done
 
 **File:** `src/woz_gui.cpp`
 **Tag:** T2 — the description-assembly logic (which properties to read per target kind) is a real authoring decision about what the GM sees, not mechanical plumbing.
+**Actual:** T4 — landed in the same commit as Task 3.2 (`8998c3f`), same author request as noted there.
+**Note:** the full interactive truth-table pass (all six kinds, both `move` sub-cases) against the running GUI is still outstanding — build is green and the code was launched to confirm it starts cleanly, but the author is doing the manual click-through verification separately, not yet reported back.
 
 **Changes:**
 - When `is_tier0(...)` is true for the current kind+target selection, render a read-only text block: for `examine` on an entity, its `hp`/`disposition`/`holds`/`persona`; on an object, its properties map; on the player, `hp`/`gold`/`inventory`; for `move`, a fixed passage-confirmation line.
